@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
@@ -7,7 +6,7 @@ import { useDrawContext } from "@/context/DrawContext";
 import { toast } from "@/components/ui/use-toast";
 
 // OpenAI integration for image generation
-async function generateImageWithOpenAI(imageBase64: string): Promise<string> {
+async function generateImageWithOpenAI(imageBase64: string, apiKey: string): Promise<string> {
   try {
     // Extract the base64 data (remove the prefix like "data:image/jpeg;base64,")
     const base64Data = imageBase64.split(',')[1];
@@ -17,7 +16,7 @@ async function generateImageWithOpenAI(imageBase64: string): Promise<string> {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY || ''}`,
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: "gpt-4o", // Using gpt-4o which supports vision and image generation
@@ -108,14 +107,8 @@ const MakeRealScreen: React.FC = () => {
         sessionStorage.setItem("openai_api_key", apiKeyInput);
       }
 
-      // Temporary local override for development
-      const tempApiKey = sessionStorage.getItem("openai_api_key");
-      if (tempApiKey) {
-        (window as any).tempOpenAIKey = tempApiKey;
-      }
-      
-      // Generate the image
-      const generatedImageUrl = await generateImageWithOpenAI(capturedImage);
+      // Pass the API key to the generation function
+      const generatedImageUrl = await generateImageWithOpenAI(capturedImage, apiKey);
       
       // Convert remote URL to base64 if needed
       if (generatedImageUrl.startsWith('http')) {
