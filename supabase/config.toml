@@ -1,1 +1,6 @@
+
 project_id = "nrrtzvmvgtbjomdxlufl"
+
+# Define edge function settings
+[functions.generate-image]
+verify_jwt = false # Allow the function to be called without authentication

@@ -37,18 +37,30 @@ export function useImageGeneration() {
   }, [isGenerating]);
   
   const handleMakeReal = async () => {
-    if (!capturedImage) return;
+    if (!capturedImage) {
+      toast({
+        title: "No Image",
+        description: "Please capture an image first",
+        variant: "destructive"
+      });
+      navigate("/camera");
+      return;
+    }
     
     setIsGenerating(true);
     setGenerationError(null);
     
     try {
-      // Use the API key from Supabase Secrets through the Edge Function
+      console.log("Starting image generation process");
+      // Generate image using Supabase Edge Function
       const generatedImageUrl = await generateImageWithOpenAI(capturedImage);
+      
+      console.log("Image generation successful, URL:", generatedImageUrl);
       
       // Handle the response from our edge function
       if (generatedImageUrl.startsWith('http')) {
         // Fetch the image and convert to base64
+        console.log("Fetching image from URL");
         const response = await fetch(generatedImageUrl);
         const blob = await response.blob();
         
@@ -60,9 +72,11 @@ export function useImageGeneration() {
           setGeneratedImage(base64data);
           setIsGenerating(false);
           navigate("/result");
+          console.log("Image loaded and navigation to result page");
         };
       } else {
         // Already in base64 format
+        console.log("Image already in base64 format");
         setGeneratedImage(generatedImageUrl);
         setIsGenerating(false);
         navigate("/result");
