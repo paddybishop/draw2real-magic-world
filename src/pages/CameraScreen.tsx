@@ -1,30 +1,48 @@
 
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import PrimaryButton from "@/components/PrimaryButton";
 import { useDrawContext } from "@/context/DrawContext";
+import { Camera, CameraOff } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
+import SquigglyHeading from "@/components/SquigglyHeading";
 
 const CameraScreen: React.FC = () => {
   const navigate = useNavigate();
   const { setCapturedImage } = useDrawContext();
   const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [isCameraAttempted, setIsCameraAttempted] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const startCamera = async () => {
+    setIsCameraAttempted(true);
     try {
+      // Try to get the camera with explicit width and height constraints
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: "environment" } 
+        video: { 
+          facingMode: "environment",
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        } 
       });
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        setCameraActive(true);
+        videoRef.current.onloadedmetadata = () => {
+          setCameraActive(true);
+        };
       }
     } catch (err) {
       console.error("Error accessing camera:", err);
-      alert("Could not access camera. Please check permissions or try uploading an image instead.");
+      setCameraError(`Camera access error: ${err instanceof Error ? err.message : "Unknown error"}`);
+      toast({
+        title: "Camera Access Error",
+        description: "Could not access camera. Please check permissions or try uploading an image instead.",
+        variant: "destructive"
+      });
     }
   };
   
@@ -72,9 +90,14 @@ const CameraScreen: React.FC = () => {
     fileInputRef.current?.click();
   };
   
-  React.useEffect(() => {
-    startCamera();
+  useEffect(() => {
+    // Add a small delay before starting the camera to ensure DOM is fully loaded
+    const timer = setTimeout(() => {
+      startCamera();
+    }, 500);
+    
     return () => {
+      clearTimeout(timer);
       stopCamera();
     };
   }, []);
@@ -91,8 +114,25 @@ const CameraScreen: React.FC = () => {
               className="absolute inset-0 w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <p className="text-white">Loading camera...</p>
+            <div className="w-full h-full flex flex-col items-center justify-center gap-4 p-6 text-center">
+              {!isCameraAttempted ? (
+                <p className="text-white">Initializing camera...</p>
+              ) : cameraError ? (
+                <>
+                  <CameraOff className="w-12 h-12 text-draw-pink mb-2" />
+                  <SquigglyHeading className="text-white text-xl mb-2">
+                    Camera Not Available
+                  </SquigglyHeading>
+                  <p className="text-white text-sm mb-4">
+                    Please use the upload button below to select an image from your device.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <Camera className="w-12 h-12 text-draw-yellow animate-pulse mb-2" />
+                  <p className="text-white">Loading camera...</p>
+                </>
+              )}
             </div>
           )}
           
