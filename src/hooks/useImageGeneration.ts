@@ -52,28 +52,44 @@ export function useImageGeneration() {
     
     try {
       console.log("Starting image generation process");
+      console.log("Image data length:", capturedImage.length);
+      
       // Generate image using Supabase Edge Function
       const generatedImageUrl = await generateImageWithOpenAI(capturedImage);
       
-      console.log("Image generation successful, URL:", generatedImageUrl);
+      console.log("Image generation successful, URL received:", !!generatedImageUrl);
+      
+      if (!generatedImageUrl) {
+        throw new Error("No image URL returned from the server");
+      }
       
       // Handle the response from our edge function
       if (generatedImageUrl.startsWith('http')) {
         // Fetch the image and convert to base64
-        console.log("Fetching image from URL");
-        const response = await fetch(generatedImageUrl);
-        const blob = await response.blob();
-        
-        // Convert blob to base64
-        const reader = new FileReader();
-        reader.readAsDataURL(blob);
-        reader.onloadend = () => {
-          const base64data = reader.result as string;
-          setGeneratedImage(base64data);
-          setIsGenerating(false);
-          navigate("/result");
-          console.log("Image loaded and navigation to result page");
-        };
+        console.log("Fetching image from URL:", generatedImageUrl.substring(0, 50) + "...");
+        try {
+          const response = await fetch(generatedImageUrl);
+          
+          if (!response.ok) {
+            throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+          }
+          
+          const blob = await response.blob();
+          
+          // Convert blob to base64
+          const reader = new FileReader();
+          reader.readAsDataURL(blob);
+          reader.onloadend = () => {
+            const base64data = reader.result as string;
+            console.log("Image successfully loaded as base64");
+            setGeneratedImage(base64data);
+            setIsGenerating(false);
+            navigate("/result");
+          };
+        } catch (fetchError) {
+          console.error("Error fetching generated image:", fetchError);
+          throw new Error(`Error fetching image: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}`);
+        }
       } else {
         // Already in base64 format
         console.log("Image already in base64 format");
