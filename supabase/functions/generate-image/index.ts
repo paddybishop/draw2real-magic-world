@@ -90,7 +90,7 @@ serve(async (req) => {
     const arrayBuffer = await imageBlob.arrayBuffer();
     const imageBytes = new Uint8Array(arrayBuffer);
     
-    // Create a Supabase client
+    // Create a Supabase client with service role key
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     
@@ -102,6 +102,7 @@ serve(async (req) => {
       );
     }
     
+    // Create client with service role key for admin privileges
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     // Create a unique filename
@@ -109,6 +110,40 @@ serve(async (req) => {
     const bucketName = 'generated-images';
     
     console.log(`Uploading image to Supabase Storage bucket '${bucketName}' as ${filename}`);
+    
+    try {
+      // Check if bucket exists and create if needed
+      const { data: buckets, error: bucketListError } = await supabase
+        .storage
+        .listBuckets();
+      
+      if (bucketListError) {
+        console.error("Error listing buckets:", bucketListError);
+      } else {
+        const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
+        
+        if (!bucketExists) {
+          console.log(`Bucket '${bucketName}' not found, attempting to create it`);
+          const { error: createError } = await supabase
+            .storage
+            .createBucket(bucketName, {
+              public: true,
+              fileSizeLimit: 5242880 // 5MB
+            });
+          
+          if (createError) {
+            console.error("Error creating bucket:", createError);
+          } else {
+            console.log(`Successfully created bucket '${bucketName}'`);
+          }
+        } else {
+          console.log(`Bucket '${bucketName}' already exists`);
+        }
+      }
+    } catch (bucketError) {
+      console.error("Error managing bucket:", bucketError);
+      // Continue with upload attempt even if bucket check/creation fails
+    }
     
     // Upload to Supabase Storage
     const { data: uploadData, error: uploadError } = await supabase
