@@ -1,137 +1,98 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
 };
 
-serve(async (req: Request) => {
-  // Handle CORS preflight
+serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { status: 200, headers: corsHeaders });
   }
 
   try {
     const { imageData } = await req.json();
-
+    
     if (!imageData) {
       return new Response(
-        JSON.stringify({ error: 'Missing image data' }),
+        JSON.stringify({ error: 'No image data provided' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log("Received base64 image data");
-
-    // Step 1: Ask GPT-4o to look at the image and generate a DALL·E-style prompt
-    console.log("Sending image to GPT-4o for analysis...");
-    const visionRes = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: 'Describe this drawing in a fun and imaginative way so I can make a realistic version using AI. Make sure to capture all the details of the drawing.',
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: imageData,
-                },
-              },
-            ],
-          },
-        ],
-      }),
-    });
-
-    if (!visionRes.ok) {
-      const errText = await visionRes.text();
-      console.error('GPT-4o error:', errText);
+    // Get OpenAI API key from environment variables
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openaiApiKey) {
       return new Response(
-        JSON.stringify({ error: 'Failed to analyse drawing' }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const visionData = await visionRes.json();
-    const generatedPrompt = visionData.choices?.[0]?.message?.content?.trim();
-    console.log("Generated prompt:", generatedPrompt);
-
-    if (!generatedPrompt) {
-      return new Response(
-        JSON.stringify({ error: 'No prompt generated from image' }),
+        JSON.stringify({ error: "API key not configured" }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Step 2: Send the generated prompt to DALL·E
-    console.log("Sending prompt to DALL-E for image generation...");
-    const imageRes = await fetch('https://api.openai.com/v1/images/generations', {
-      method: 'POST',
+    console.log("Calling OpenAI API to generate image and extract prompt...");
+    
+    // First use OpenAI's DALL-E to generate the image
+    const openaiResponse = await fetch("https://api.openai.com/v1/images/generations", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${openaiApiKey}`,
       },
       body: JSON.stringify({
-        model: 'dall-e-3',
-        prompt: generatedPrompt,
+        model: "dall-e-3",
+        prompt: "Transform this drawing into a realistic, detailed image. Keep the general concept, layout and colors from the original drawing, but make it look photorealistic.",
         n: 1,
-        size: '1024x1024',
-        response_format: 'url',
+        size: "1024x1024",
+        response_format: "url",
       }),
     });
 
-    if (!imageRes.ok) {
-      const errText = await imageRes.text();
-      console.error('DALL·E error:', errText);
+    if (!openaiResponse.ok) {
+      const errorText = await openaiResponse.text();
+      console.error("OpenAI API error:", errorText);
       return new Response(
-        JSON.stringify({ error: 'Failed to generate image' }),
+        JSON.stringify({ error: `OpenAI API error: ${errorText}` }),
         { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const imageData = await imageRes.json();
-    const generatedImageUrl = imageData.data?.[0]?.url;
-    console.log("Received DALL-E image URL:", generatedImageUrl ? "success" : "failed");
+    const openaiData = await openaiResponse.json();
+    const imageUrl = openaiData.data[0]?.url;
+    const prompt = openaiData.data[0]?.revised_prompt || "";
 
-    if (!generatedImageUrl) {
+    if (!imageUrl) {
+      console.error("No image URL returned from OpenAI");
       return new Response(
-        JSON.stringify({ error: 'No image URL returned from DALL·E' }),
+        JSON.stringify({ error: "No image URL returned from OpenAI" }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Return both the prompt and the direct image URL from OpenAI
-    // This avoids storing in Supabase storage which is causing RLS issues
-    return new Response(
-      JSON.stringify({ 
-        imageUrl: generatedImageUrl, 
-        prompt: generatedPrompt 
-      }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    // Use generated image URL directly
+    console.log("Successfully generated image with DALL-E");
 
+    return new Response(
+      JSON.stringify({ imageUrl, prompt }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200 
+      }
+    );
+    
   } catch (error) {
-    console.error('Server error:', error);
+    console.error("Error:", error.message);
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: "Error processing request", 
+        details: error.message 
       }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500 
       }
     );
   }
