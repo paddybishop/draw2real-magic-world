@@ -11,7 +11,7 @@ async function generateImageWithOpenAI(imageBase64: string, apiKey: string): Pro
     // Extract the base64 data (remove the prefix like "data:image/jpeg;base64,")
     const base64Data = imageBase64.split(',')[1];
     
-    // Call OpenAI API
+    // Call OpenAI API using DALL-E-3 model which is designed for image generation
     const response = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: {
@@ -19,25 +19,12 @@ async function generateImageWithOpenAI(imageBase64: string, apiKey: string): Pro
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o", // Using gpt-4o which supports vision and image generation
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: "Transform this child's drawing into a realistic image. Keep the same colors and style but make it look like a real photograph. Return only the image, no text."
-              },
-              {
-                type: "image_url",
-                image_url: {
-                  url: imageBase64
-                }
-              }
-            ]
-          }
-        ],
-        response_format: { type: "image_url" }
+        model: "dall-e-3", // Using DALL-E-3 for image generation
+        prompt: "Transform this child's drawing into a realistic image. Keep the same colors and style but make it look like a real photograph.",
+        n: 1,
+        size: "1024x1024",
+        response_format: "url",
+        image: base64Data, // Provide the base64-encoded image
       }),
     });
 
