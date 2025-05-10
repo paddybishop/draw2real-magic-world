@@ -5,9 +5,11 @@ interface DrawContextType {
   capturedImage: string | null;
   generatedImage: string | null;
   isGenerating: boolean;
+  generationError: string | null;
   setCapturedImage: (image: string | null) => void;
   setGeneratedImage: (image: string | null) => void;
   setIsGenerating: (isGenerating: boolean) => void;
+  setGenerationError: (error: string | null) => void;
   resetImages: () => void;
 }
 
@@ -17,11 +19,13 @@ export const DrawProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
 
   const resetImages = () => {
     setCapturedImage(null);
     setGeneratedImage(null);
     setIsGenerating(false);
+    setGenerationError(null);
   };
 
   return (
@@ -29,9 +33,11 @@ export const DrawProvider: React.FC<{ children: React.ReactNode }> = ({ children
       capturedImage,
       generatedImage,
       isGenerating,
+      generationError,
       setCapturedImage,
       setGeneratedImage,
       setIsGenerating,
+      setGenerationError,
       resetImages
     }}>
       {children}
