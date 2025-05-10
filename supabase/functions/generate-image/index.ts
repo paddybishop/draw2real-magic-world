@@ -5,30 +5,37 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { status: 200, headers: corsHeaders });
   }
 
   try {
     const { imageBase64 } = await req.json();
     
     if (!imageBase64) {
-      throw new Error("No image data provided");
+      return new Response(
+        JSON.stringify({ error: 'No image data provided' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
     
     console.log("Received image data, calling OpenAI API");
     
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openaiApiKey) {
-      throw new Error("OPENAI_API_KEY is not set in environment variables");
+      return new Response(
+        JSON.stringify({ error: "OPENAI_API_KEY is not set in environment variables" }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Call OpenAI's image generation API (dall-e-3)
-    const response = await fetch("https://api.openai.com/v1/images/generations", {
+    const openaiRes = await fetch("https://api.openai.com/v1/images/generations", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -39,23 +46,37 @@ serve(async (req) => {
         prompt: "Transform this drawing into a realistic, detailed image. Keep the general concept, layout and colors from the original drawing, but make it look photorealistic.",
         n: 1,
         size: "1024x1024",
+        response_format: "url",
       }),
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("OpenAI API error:", errorData);
-      throw new Error(`OpenAI API error: ${JSON.stringify(errorData)}`);
+    if (!openaiRes.ok) {
+      const errorDetails = await openaiRes.text();
+      console.error("OpenAI API error:", errorDetails);
+      return new Response(
+        JSON.stringify({ error: `OpenAI API error: ${errorDetails}` }),
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    const data = await response.json();
+    const data = await openaiRes.json();
+    
+    if (!data || !data.data || !data.data[0]?.url) {
+      console.error("No image URL returned from OpenAI");
+      return new Response(
+        JSON.stringify({ error: "No image URL returned from OpenAI" }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const imageUrl = data.data[0].url;
     
     console.log("Successfully generated image URL:", imageUrl);
     
-    return new Response(JSON.stringify({ imageUrl }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ imageUrl }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   } catch (error) {
     console.error("Error in generate-image function:", error);
     
