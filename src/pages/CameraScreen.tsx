@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
@@ -14,11 +13,14 @@ const CameraScreen: React.FC = () => {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isCameraAttempted, setIsCameraAttempted] = useState(false);
+  const [status, setStatus] = useState("Initializing...");
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const startCamera = async () => {
     setIsCameraAttempted(true);
+    setStatus("Requesting access...");
+    
     try {
       // Try to get the camera with explicit width and height constraints
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -32,12 +34,24 @@ const CameraScreen: React.FC = () => {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.onloadedmetadata = () => {
+          setStatus("Camera ready!");
           setCameraActive(true);
         };
+        
+        // Explicitly call play() for better mobile compatibility
+        videoRef.current.play()
+          .catch(playError => {
+            console.error("Error playing video:", playError);
+            setStatus(`Error starting video: ${playError.message}`);
+          });
+      } else {
+        setCameraError("Video element not found");
+        setStatus("Error: Camera element missing");
       }
     } catch (err) {
       console.error("Error accessing camera:", err);
       setCameraError(`Camera access error: ${err instanceof Error ? err.message : "Unknown error"}`);
+      setStatus(`Camera access failed: ${err instanceof Error ? err.message : "Unknown error"}`);
       toast({
         title: "Camera Access Error",
         description: "Could not access camera. Please check permissions or try uploading an image instead.",
@@ -52,6 +66,7 @@ const CameraScreen: React.FC = () => {
       tracks.forEach(track => track.stop());
       videoRef.current.srcObject = null;
       setCameraActive(false);
+      setStatus("Camera stopped");
     }
   };
   
@@ -91,13 +106,23 @@ const CameraScreen: React.FC = () => {
   };
   
   useEffect(() => {
-    // Add a small delay before starting the camera to ensure DOM is fully loaded
-    const timer = setTimeout(() => {
+    // Ensure DOM is fully loaded before starting camera
+    if (document.readyState === "complete") {
       startCamera();
-    }, 500);
+    } else {
+      window.addEventListener('DOMContentLoaded', startCamera);
+      // Set a reasonable timeout as a fallback
+      const timer = setTimeout(() => {
+        startCamera();
+      }, 1000);
+      
+      return () => {
+        window.removeEventListener('DOMContentLoaded', startCamera);
+        clearTimeout(timer);
+      };
+    }
     
     return () => {
-      clearTimeout(timer);
       stopCamera();
     };
   }, []);
@@ -105,18 +130,21 @@ const CameraScreen: React.FC = () => {
   return (
     <Layout title="Take a Photo" showBackButton>
       <div className="w-full max-w-md flex flex-col items-center justify-center gap-4">
+        <p className="text-center text-sm font-medium mb-2" aria-live="polite">{status}</p>
+        
         <div className="relative w-full aspect-square rounded-3xl overflow-hidden border-8 border-white shadow-xl bg-black">
           {cameraActive ? (
             <video 
               ref={videoRef} 
               autoPlay 
               playsInline
+              muted
               className="absolute inset-0 w-full h-full object-cover"
             />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center gap-4 p-6 text-center">
               {!isCameraAttempted ? (
-                <p className="text-white">Initializing camera...</p>
+                <p className="text-white">{status}</p>
               ) : cameraError ? (
                 <>
                   <CameraOff className="w-12 h-12 text-draw-pink mb-2" />
@@ -130,7 +158,7 @@ const CameraScreen: React.FC = () => {
               ) : (
                 <>
                   <Camera className="w-12 h-12 text-draw-yellow animate-pulse mb-2" />
-                  <p className="text-white">Loading camera...</p>
+                  <p className="text-white">{status}</p>
                 </>
               )}
             </div>
