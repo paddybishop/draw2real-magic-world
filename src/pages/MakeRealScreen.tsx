@@ -2,7 +2,6 @@
 import React from "react";
 import Layout from "@/components/Layout";
 import PrimaryButton from "@/components/PrimaryButton";
-import ApiKeyInput from "@/components/ApiKeyInput";
 import ImagePreview from "@/components/ImagePreview";
 import { useImageGeneration } from "@/hooks/useImageGeneration";
 
@@ -11,9 +10,6 @@ const MakeRealScreen: React.FC = () => {
     capturedImage,
     isGenerating,
     loadingDots,
-    apiKeyInput,
-    setApiKeyInput,
-    showApiKeyInput,
     handleMakeReal
   } = useImageGeneration();
   
@@ -26,19 +22,12 @@ const MakeRealScreen: React.FC = () => {
           loadingDots={loadingDots}
         />
         
-        {showApiKeyInput && (
-          <ApiKeyInput 
-            apiKeyInput={apiKeyInput} 
-            setApiKeyInput={setApiKeyInput} 
-          />
-        )}
-        
         <PrimaryButton
           color="purple"
           size="large"
           className="animate-bounce-light w-64"
           onClick={handleMakeReal}
-          disabled={isGenerating || (showApiKeyInput && !apiKeyInput)}
+          disabled={isGenerating}
         >
           {isGenerating ? (
             <span>Working on it...</span>

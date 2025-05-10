@@ -15,8 +15,6 @@ export function useImageGeneration() {
     setGenerationError 
   } = useDrawContext();
   const [loadingDots, setLoadingDots] = useState("");
-  const [apiKeyInput, setApiKeyInput] = useState("");
-  const [showApiKeyInput, setShowApiKeyInput] = useState(!import.meta.env.VITE_OPENAI_API_KEY);
 
   useEffect(() => {
     if (!capturedImage) {
@@ -45,20 +43,8 @@ export function useImageGeneration() {
     setGenerationError(null);
     
     try {
-      // Use the API key from environment or from user input
-      const apiKey = import.meta.env.VITE_OPENAI_API_KEY || apiKeyInput;
-      
-      if (!apiKey && showApiKeyInput) {
-        throw new Error("OpenAI API key is required");
-      }
-      
-      // Store API key in session storage for this session only
-      if (apiKeyInput) {
-        sessionStorage.setItem("openai_api_key", apiKeyInput);
-      }
-
-      // Pass the API key to the generation function (optional with our edge function)
-      const generatedImageUrl = await generateImageWithOpenAI(capturedImage, apiKey);
+      // Use the API key from Supabase Secrets through the Edge Function
+      const generatedImageUrl = await generateImageWithOpenAI(capturedImage);
       
       // Handle the response from our edge function
       if (generatedImageUrl.startsWith('http')) {
@@ -90,7 +76,7 @@ export function useImageGeneration() {
         title: "Generation Failed",
         description: error instanceof Error 
           ? error.message 
-          : "Failed to generate image. Please try again or check your API key.",
+          : "Failed to generate image. Please try again.",
         variant: "destructive"
       });
     }
@@ -100,9 +86,6 @@ export function useImageGeneration() {
     capturedImage,
     isGenerating,
     loadingDots,
-    apiKeyInput,
-    setApiKeyInput,
-    showApiKeyInput,
     handleMakeReal
   };
 }

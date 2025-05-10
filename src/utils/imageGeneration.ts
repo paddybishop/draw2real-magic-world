@@ -11,12 +11,12 @@ interface ImageGenerationResponse {
 }
 
 // Function that uses Supabase Edge Function to generate images
-export async function generateImageWithOpenAI(imageBase64: string, apiKey?: string): Promise<string> {
+export async function generateImageWithOpenAI(imageBase64: string): Promise<string> {
   try {
     // Call the Supabase Edge Function with the image data
     const response = await callEdgeFunction<ImageGenerationResponse>('generate-image', {
       imageBase64,
-      apiKey, // This is optional and will be used as fallback if not set in Edge Function secrets
+      // API key is now stored securely in Supabase Secrets
     });
 
     if (response.error) {
