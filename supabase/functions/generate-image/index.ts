@@ -174,7 +174,13 @@ serve(async (req) => {
     
     return new Response(
       JSON.stringify({ imageUrl }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { 
+        status: 200, 
+        headers: { 
+          'Content-Type': 'application/json',
+          ...corsHeaders 
+        } 
+      }
     );
   } catch (error) {
     console.error("Error in generate-image function:", error);
@@ -185,7 +191,10 @@ serve(async (req) => {
       }),
       {
         status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { 
+          'Content-Type': 'application/json', 
+          ...corsHeaders 
+        },
       }
     );
   }
