@@ -22,7 +22,8 @@ export async function generateImageWithOpenAI(imageBase64: string, apiKey: strin
         n: 1,
         size: "1024x1024",
         response_format: "url",
-        image: base64Data, // Provide the base64-encoded image
+        // The parameter name should be 'image_data' not 'image' for base64 images
+        image_data: base64Data, // Use the correct parameter name for base64-encoded image
       }),
     });
 
