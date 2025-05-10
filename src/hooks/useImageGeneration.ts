@@ -48,7 +48,7 @@ export function useImageGeneration() {
       // Use the API key from environment or from user input
       const apiKey = import.meta.env.VITE_OPENAI_API_KEY || apiKeyInput;
       
-      if (!apiKey) {
+      if (!apiKey && showApiKeyInput) {
         throw new Error("OpenAI API key is required");
       }
       
@@ -57,10 +57,10 @@ export function useImageGeneration() {
         sessionStorage.setItem("openai_api_key", apiKeyInput);
       }
 
-      // Pass the API key to the generation function
+      // Pass the API key to the generation function (optional with our edge function)
       const generatedImageUrl = await generateImageWithOpenAI(capturedImage, apiKey);
       
-      // Convert remote URL to base64 if needed
+      // Handle the response from our edge function
       if (generatedImageUrl.startsWith('http')) {
         // Fetch the image and convert to base64
         const response = await fetch(generatedImageUrl);
@@ -88,7 +88,9 @@ export function useImageGeneration() {
       
       toast({
         title: "Generation Failed",
-        description: error instanceof Error ? error.message : "Failed to generate image. Please try again.",
+        description: error instanceof Error 
+          ? error.message 
+          : "Failed to generate image. Please try again or check your API key.",
         variant: "destructive"
       });
     }

@@ -13,7 +13,7 @@ const ApiKeyInput: React.FC<ApiKeyInputProps> = ({ apiKeyInput, setApiKeyInput }
         <h3 className="text-lg font-semibold mb-2 text-gray-800">OpenAI API Key Required</h3>
         <p className="text-sm text-gray-600 mb-3">
           Enter your OpenAI API key to transform your drawing. 
-          The key will only be stored for this session.
+          The key will only be used for this session.
         </p>
         <input
           type="password"
@@ -22,9 +22,14 @@ const ApiKeyInput: React.FC<ApiKeyInputProps> = ({ apiKeyInput, setApiKeyInput }
           placeholder="sk-..."
           className="w-full px-3 py-2 border rounded-md mb-2"
         />
-        <p className="text-xs text-gray-500">
-          Your API key is only used for this request and is never stored on our servers.
-        </p>
+        <div className="text-xs text-gray-500 space-y-1">
+          <p>
+            Your API key is only used for this request and is never stored on our servers.
+          </p>
+          <p className="italic">
+            Note: Soon, this app will use a Supabase Edge Function, eliminating the need to enter an API key.
+          </p>
+        </div>
       </div>
     </div>
   );

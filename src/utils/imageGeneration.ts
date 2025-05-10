@@ -1,9 +1,36 @@
-
 /**
- * Utility function for generating images using OpenAI's API
+ * Utility function for generating images using OpenAI's API via Supabase Edge Functions
  */
+import { callEdgeFunction } from './supabaseClient';
 
-// Function to analyze image with GPT-4o (vision capabilities)
+// Interface for the response from our Edge Function
+interface ImageGenerationResponse {
+  imageUrl: string;
+  error?: string;
+}
+
+// Function that uses Supabase Edge Function to generate images
+export async function generateImageWithOpenAI(imageBase64: string, apiKey?: string): Promise<string> {
+  try {
+    // Call the Supabase Edge Function with the image data
+    const response = await callEdgeFunction<ImageGenerationResponse>('generate-image', {
+      imageBase64,
+      apiKey, // This is optional and will be used as fallback if not set in Edge Function secrets
+    });
+
+    if (response.error) {
+      throw new Error(response.error);
+    }
+
+    return response.imageUrl;
+  } catch (error) {
+    console.error("Image generation error:", error);
+    throw error;
+  }
+}
+
+// Keep the analyzeImageWithGPT4o function for reference until the Edge Function is fully implemented
+// This function will be moved to the Edge Function
 export async function analyzeImageWithGPT4o(imageBase64: string, apiKey: string): Promise<string> {
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -45,45 +72,6 @@ export async function analyzeImageWithGPT4o(imageBase64: string, apiKey: string)
     return data.choices[0].message.content;
   } catch (error) {
     console.error("Image analysis error:", error);
-    throw error;
-  }
-}
-
-// OpenAI integration for image generation
-export async function generateImageWithOpenAI(imageBase64: string, apiKey: string): Promise<string> {
-  try {
-    // Step 1: Use GPT-4o to analyze the image and create a detailed description
-    const imageDescription = await analyzeImageWithGPT4o(imageBase64, apiKey);
-    
-    // Step 2: Use the description to generate a new image with DALL-E-3
-    const prompt = `Create a realistic version of this child's drawing: ${imageDescription}. Make it look photorealistic while keeping the spirit and elements of the original drawing.`;
-    
-    // Call OpenAI API using DALL-E-3 model for image generation
-    const response = await fetch('https://api.openai.com/v1/images/generations', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "dall-e-3", // Using DALL-E-3 for image generation
-        prompt: prompt,
-        n: 1,
-        size: "1024x1024",
-        response_format: "url",
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`DALL-E API Error: ${errorData.error?.message || response.statusText}`);
-    }
-
-    const data = await response.json();
-    // Return the generated image URL
-    return data.data[0].url;
-  } catch (error) {
-    console.error("Image generation error:", error);
     throw error;
   }
 }
