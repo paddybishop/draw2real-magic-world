@@ -19,12 +19,20 @@ export async function callEdgeFunction<T>(
   payload: any
 ): Promise<T> {
   try {
+    console.log(`Calling edge function: ${functionName}`);
+    
     const { data, error } = await supabase.functions.invoke<T>(functionName, {
       body: payload,
     });
 
     if (error) {
+      console.error(`Edge function error:`, error);
       throw new Error(`Edge function error: ${error.message || 'Unknown error'}`);
+    }
+
+    if (!data) {
+      console.error('Edge function returned no data');
+      throw new Error('Edge function returned no data');
     }
 
     return data;
