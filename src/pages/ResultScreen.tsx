@@ -9,9 +9,10 @@ import { toast } from "@/components/ui/use-toast";
 
 const ResultScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { capturedImage, generatedImage, resetImages } = useDrawContext();
+  const { capturedImage, generatedImage, generatedPrompt, resetImages } = useDrawContext();
   const [showConfetti, setShowConfetti] = useState(true);
   const [compareMode, setCompareMode] = useState<boolean>(false);
+  const [showPrompt, setShowPrompt] = useState<boolean>(false);
   
   useEffect(() => {
     if (!generatedImage) {
@@ -41,6 +42,10 @@ const ResultScreen: React.FC = () => {
   
   const handleMoreOptions = () => {
     navigate("/premium");
+  };
+  
+  const togglePrompt = () => {
+    setShowPrompt(!showPrompt);
   };
   
   if (!generatedImage) {
@@ -86,6 +91,13 @@ const ResultScreen: React.FC = () => {
           )}
         </div>
         
+        {showPrompt && generatedPrompt && (
+          <div className="w-full p-3 bg-white rounded-lg shadow-md text-sm">
+            <h3 className="text-draw-purple font-bold mb-1">AI Prompt:</h3>
+            <p className="text-gray-700">{generatedPrompt}</p>
+          </div>
+        )}
+        
         <div className="mt-4 flex flex-wrap gap-3 justify-center">
           <div className="flex gap-3">
             <PrimaryButton
@@ -118,6 +130,15 @@ const ResultScreen: React.FC = () => {
               Make Another
             </PrimaryButton>
             
+            <PrimaryButton
+              color={showPrompt ? "purple" : "purple"}
+              onClick={togglePrompt}
+            >
+              {showPrompt ? "Hide Prompt" : "Show Prompt"}
+            </PrimaryButton>
+          </div>
+          
+          <div className="flex justify-center w-full">
             <PrimaryButton
               color="purple"
               onClick={handleMoreOptions}
