@@ -14,6 +14,7 @@ const CameraScreen: React.FC = () => {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isCameraAttempted, setIsCameraAttempted] = useState(false);
+  const [loadingText, setLoadingText] = useState("Initializing camera...");
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -30,16 +31,26 @@ const CameraScreen: React.FC = () => {
       });
       
       if (videoRef.current) {
-        // Set the srcObject to the stream and play the video
+        // Set the srcObject to the stream properly
         videoRef.current.srcObject = stream;
-        videoRef.current.play().catch(e => {
-          console.error("Error playing video:", e);
-        });
-        setCameraActive(true);
+        
+        // Listen for the loadedmetadata event before playing
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play()
+            .then(() => {
+              setCameraActive(true);
+              setLoadingText("Camera Ready!");
+            })
+            .catch((e) => {
+              console.error("Error playing video:", e);
+              setCameraError(`Error playing video: ${e instanceof Error ? e.message : "Unknown error"}`);
+            });
+        };
       }
     } catch (err) {
       console.error("Error accessing camera:", err);
       setCameraError(`Camera access error: ${err instanceof Error ? err.message : "Unknown error"}`);
+      setLoadingText("Camera failed to load");
       toast({
         title: "Camera Access Error",
         description: "Could not access camera. Please check permissions or try uploading an image instead.",
@@ -119,7 +130,7 @@ const CameraScreen: React.FC = () => {
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center gap-4 p-6 text-center">
               {!isCameraAttempted ? (
-                <p className="text-white">Initializing camera...</p>
+                <p className="text-white">{loadingText}</p>
               ) : cameraError ? (
                 <>
                   <CameraOff className="w-12 h-12 text-draw-pink mb-2" />
@@ -129,11 +140,14 @@ const CameraScreen: React.FC = () => {
                   <p className="text-white text-sm mb-4">
                     Please use the upload button below to select an image from your device.
                   </p>
+                  {cameraError && (
+                    <p className="text-red-400 text-xs mt-2">{cameraError}</p>
+                  )}
                 </>
               ) : (
                 <>
                   <Camera className="w-12 h-12 text-draw-yellow animate-pulse mb-2" />
-                  <p className="text-white">Loading camera...</p>
+                  <p className="text-white">{loadingText}</p>
                 </>
               )}
             </div>
