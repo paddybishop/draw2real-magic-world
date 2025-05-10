@@ -7,3 +7,7 @@ verify_jwt = false # Allow the function to be called without authentication
 
 [functions.makeReal]
 verify_jwt = false # Allow the function to be called without authentication
+
+# Storage configuration
+[storage]
+file_size_limit = "5MB"

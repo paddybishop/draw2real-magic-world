@@ -61,6 +61,26 @@ export function useImageGeneration() {
       
       console.log("Uploading original drawing to Supabase Storage");
       
+      // Make sure the bucket exists before trying to upload
+      const { data: bucketData, error: bucketError } = await supabase
+        .storage
+        .getBucket('generated-images');
+      
+      // If bucket doesn't exist, create it with public access
+      if (bucketError && bucketError.message.includes('not found')) {
+        console.log("Bucket doesn't exist, creating it with public access");
+        const { error: createBucketError } = await supabase
+          .storage
+          .createBucket('generated-images', { 
+            public: true, 
+            fileSizeLimit: 5242880 // 5MB
+          });
+        
+        if (createBucketError) {
+          throw new Error(`Failed to create storage bucket: ${createBucketError.message}`);
+        }
+      }
+      
       const { data: uploadData, error: uploadError } = await supabase
         .storage
         .from('generated-images')
