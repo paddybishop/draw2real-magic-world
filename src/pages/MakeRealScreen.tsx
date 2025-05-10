@@ -1,196 +1,36 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+
+import React from "react";
 import Layout from "@/components/Layout";
 import PrimaryButton from "@/components/PrimaryButton";
-import { useDrawContext } from "@/context/DrawContext";
-import { toast } from "@/components/ui/use-toast";
-
-// OpenAI integration for image generation
-async function generateImageWithOpenAI(imageBase64: string, apiKey: string): Promise<string> {
-  try {
-    // Extract the base64 data (remove the prefix like "data:image/jpeg;base64,")
-    const base64Data = imageBase64.split(',')[1];
-    
-    // Call OpenAI API using DALL-E-3 model which is designed for image generation
-    const response = await fetch('https://api.openai.com/v1/images/generations', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "dall-e-3", // Using DALL-E-3 for image generation
-        prompt: "Transform this child's drawing into a realistic image. Keep the same colors and style but make it look like a real photograph.",
-        n: 1,
-        size: "1024x1024",
-        response_format: "url",
-        image: base64Data, // Provide the base64-encoded image
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`API Error: ${errorData.error?.message || response.statusText}`);
-    }
-
-    const data = await response.json();
-    // Return the generated image URL
-    return data.data[0].url;
-  } catch (error) {
-    console.error("Image generation error:", error);
-    throw error;
-  }
-}
+import ApiKeyInput from "@/components/ApiKeyInput";
+import ImagePreview from "@/components/ImagePreview";
+import { useImageGeneration } from "@/hooks/useImageGeneration";
 
 const MakeRealScreen: React.FC = () => {
-  const navigate = useNavigate();
-  const { 
-    capturedImage, 
-    setGeneratedImage, 
-    setIsGenerating, 
-    isGenerating, 
-    setGenerationError 
-  } = useDrawContext();
-  const [loadingDots, setLoadingDots] = useState("");
-  const [apiKeyInput, setApiKeyInput] = useState("");
-  const [showApiKeyInput, setShowApiKeyInput] = useState(!import.meta.env.VITE_OPENAI_API_KEY);
-
-  useEffect(() => {
-    if (!capturedImage) {
-      navigate("/camera");
-    }
-  }, [capturedImage, navigate]);
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    
-    if (isGenerating) {
-      interval = setInterval(() => {
-        setLoadingDots(prev => prev.length >= 3 ? "" : prev + ".");
-      }, 500);
-    }
-    
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isGenerating]);
-  
-  const handleMakeReal = async () => {
-    if (!capturedImage) return;
-    
-    setIsGenerating(true);
-    setGenerationError(null);
-    
-    try {
-      // Use the API key from environment or from user input
-      const apiKey = import.meta.env.VITE_OPENAI_API_KEY || apiKeyInput;
-      
-      if (!apiKey) {
-        throw new Error("OpenAI API key is required");
-      }
-      
-      // Store API key in session storage for this session only
-      if (apiKeyInput) {
-        sessionStorage.setItem("openai_api_key", apiKeyInput);
-      }
-
-      // Pass the API key to the generation function
-      const generatedImageUrl = await generateImageWithOpenAI(capturedImage, apiKey);
-      
-      // Convert remote URL to base64 if needed
-      if (generatedImageUrl.startsWith('http')) {
-        // Fetch the image and convert to base64
-        const response = await fetch(generatedImageUrl);
-        const blob = await response.blob();
-        
-        // Convert blob to base64
-        const reader = new FileReader();
-        reader.readAsDataURL(blob);
-        reader.onloadend = () => {
-          const base64data = reader.result as string;
-          setGeneratedImage(base64data);
-          setIsGenerating(false);
-          navigate("/result");
-        };
-      } else {
-        // Already in base64 format
-        setGeneratedImage(generatedImageUrl);
-        setIsGenerating(false);
-        navigate("/result");
-      }
-    } catch (error) {
-      console.error("Error generating image:", error);
-      setGenerationError(error instanceof Error ? error.message : "Failed to generate image");
-      setIsGenerating(false);
-      
-      toast({
-        title: "Generation Failed",
-        description: error instanceof Error ? error.message : "Failed to generate image. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
+  const {
+    capturedImage,
+    isGenerating,
+    loadingDots,
+    apiKeyInput,
+    setApiKeyInput,
+    showApiKeyInput,
+    handleMakeReal
+  } = useImageGeneration();
   
   return (
     <Layout title="Make It Real" showBackButton>
       <div className="w-full max-w-md flex flex-col items-center justify-center gap-4">
-        <div className="relative w-full aspect-square rounded-3xl overflow-hidden border-8 border-white shadow-xl mb-8">
-          {capturedImage && (
-            <img 
-              src={capturedImage} 
-              alt="Captured drawing" 
-              className="w-full h-full object-cover"
-            />
-          )}
-          
-          {isGenerating && (
-            <div className="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center">
-              <div className="flex space-x-2 mb-4">
-                <div className="w-4 h-4 bg-draw-pink rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <div className="w-4 h-4 bg-draw-yellow rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <div className="w-4 h-4 bg-draw-turquoise rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                <div className="w-4 h-4 bg-draw-purple rounded-full animate-bounce" style={{ animationDelay: '450ms' }} />
-              </div>
-              <p className="text-white text-lg">Creating magic{loadingDots}</p>
-            </div>
-          )}
-          
-          {/* Drawing gears animation when loading */}
-          {isGenerating && (
-            <>
-              <div className="absolute -top-10 -left-10 w-20 h-20 opacity-50">
-                <div className="w-full h-full border-8 border-draw-pink rounded-full animate-spin" style={{ animationDuration: '8s' }}></div>
-              </div>
-              <div className="absolute -bottom-10 -right-10 w-24 h-24 opacity-50">
-                <div className="w-full h-full border-8 border-draw-turquoise rounded-full animate-spin" style={{ animationDuration: '10s', animationDirection: 'reverse' }}></div>
-              </div>
-              <div className="absolute top-1/2 -right-8 w-16 h-16 opacity-50">
-                <div className="w-full h-full border-8 border-draw-yellow rounded-full animate-spin" style={{ animationDuration: '6s' }}></div>
-              </div>
-            </>
-          )}
-        </div>
+        <ImagePreview 
+          capturedImage={capturedImage} 
+          isGenerating={isGenerating} 
+          loadingDots={loadingDots}
+        />
         
         {showApiKeyInput && (
-          <div className="w-full mb-4">
-            <div className="bg-white p-4 rounded-xl shadow-md">
-              <h3 className="text-lg font-semibold mb-2 text-gray-800">OpenAI API Key Required</h3>
-              <p className="text-sm text-gray-600 mb-3">
-                Enter your OpenAI API key to transform your drawing. 
-                The key will only be stored for this session.
-              </p>
-              <input
-                type="password"
-                value={apiKeyInput}
-                onChange={(e) => setApiKeyInput(e.target.value)}
-                placeholder="sk-..."
-                className="w-full px-3 py-2 border rounded-md mb-2"
-              />
-              <p className="text-xs text-gray-500">
-                Your API key is only used for this request and is never stored on our servers.
-              </p>
-            </div>
-          </div>
+          <ApiKeyInput 
+            apiKeyInput={apiKeyInput} 
+            setApiKeyInput={setApiKeyInput} 
+          />
         )}
         
         <PrimaryButton
