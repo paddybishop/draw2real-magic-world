@@ -30,10 +30,12 @@ const CameraScreen: React.FC = () => {
       });
       
       if (videoRef.current) {
+        // Set the srcObject to the stream and play the video
         videoRef.current.srcObject = stream;
-        videoRef.current.onloadedmetadata = () => {
-          setCameraActive(true);
-        };
+        videoRef.current.play().catch(e => {
+          console.error("Error playing video:", e);
+        });
+        setCameraActive(true);
       }
     } catch (err) {
       console.error("Error accessing camera:", err);
@@ -111,6 +113,7 @@ const CameraScreen: React.FC = () => {
               ref={videoRef} 
               autoPlay 
               playsInline
+              muted
               className="absolute inset-0 w-full h-full object-cover"
             />
           ) : (
