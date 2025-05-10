@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,17 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				// Draw2Real custom colors
+				draw: {
+					yellow: "#FFDE59",
+					pink: "#FF66C4",
+					turquoise: "#40E0D0",
+					purple: "#A177E0",
+					blue: "#5DADEC",
+					orange: "#FF9E47",
+					green: "#66DE93",
+					background: "#FFFBF7"
 				}
 			},
 			borderRadius: {
@@ -70,26 +82,41 @@ export default {
 			},
 			keyframes: {
 				'accordion-down': {
-					from: {
-						height: '0'
-					},
-					to: {
-						height: 'var(--radix-accordion-content-height)'
-					}
+					from: { height: '0' },
+					to: { height: 'var(--radix-accordion-content-height)' }
 				},
 				'accordion-up': {
-					from: {
-						height: 'var(--radix-accordion-content-height)'
-					},
-					to: {
-						height: '0'
-					}
-				}
+					from: { height: 'var(--radix-accordion-content-height)' },
+					to: { height: '0' }
+				},
+				'sparkle': {
+					'0%, 100%': { opacity: '0', transform: 'scale(0.5) rotate(0deg)' },
+					'50%': { opacity: '1', transform: 'scale(1.2) rotate(180deg)' },
+				},
+				'bounce-light': {
+					'0%, 100%': { transform: 'translateY(0)' },
+					'50%': { transform: 'translateY(-10px)' },
+				},
+				'wiggle': {
+					'0%, 100%': { transform: 'rotate(-3deg)' },
+					'50%': { transform: 'rotate(3deg)' },
+				},
+				'confetti': {
+					'0%': { transform: 'translateY(0) rotate(0)', opacity: '1' },
+					'100%': { transform: 'translateY(100vh) rotate(720deg)', opacity: '0' }
+				},
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
-			}
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'sparkle': 'sparkle 2s ease-in-out infinite',
+				'bounce-light': 'bounce-light 2s ease-in-out infinite',
+				'wiggle': 'wiggle 1s ease-in-out infinite',
+				'confetti': 'confetti 3s ease-in-out forwards',
+			},
+			fontFamily: {
+				'fredoka': ['Fredoka', 'sans-serif'],
+			},
 		}
 	},
 	plugins: [require("tailwindcss-animate")],
