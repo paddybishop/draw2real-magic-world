@@ -20,7 +20,7 @@ serve(async (req) => {
     if (!imageData) {
       return new Response(
         JSON.stringify({ error: 'No image data provided' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
 
@@ -29,7 +29,7 @@ serve(async (req) => {
     if (!openaiApiKey) {
       return new Response(
         JSON.stringify({ error: "API key not configured" }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
 
@@ -56,7 +56,7 @@ serve(async (req) => {
       console.error("OpenAI API error:", errorText);
       return new Response(
         JSON.stringify({ error: `OpenAI API error: ${errorText}` }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 502, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
 
@@ -68,17 +68,17 @@ serve(async (req) => {
       console.error("No image URL returned from OpenAI");
       return new Response(
         JSON.stringify({ error: "No image URL returned from OpenAI" }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
 
-    // Use generated image URL directly
     console.log("Successfully generated image with DALL-E");
+    console.log("Image URL:", imageUrl);
 
     return new Response(
       JSON.stringify({ imageUrl, prompt }),
       { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
         status: 200 
       }
     );
@@ -91,7 +91,7 @@ serve(async (req) => {
         details: error.message 
       }),
       { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
         status: 500 
       }
     );

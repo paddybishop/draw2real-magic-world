@@ -57,13 +57,14 @@ export function useImageGeneration() {
       // Convert captured image to blob
       const imageBlob = await fetch(capturedImage).then(r => r.blob());
       
-      // Call the makeReal Edge Function directly with the base64 image data
+      // Convert to base64
       const base64Image = await blobToBase64(imageBlob);
       
       console.log("Calling makeReal function with the drawing data");
+      
       const { data, error } = await supabase.functions.invoke<{
         imageUrl: string;
-        prompt: string;
+        prompt?: string;
         error?: string;
       }>('makeReal', {
         body: { imageData: base64Image },
@@ -93,7 +94,7 @@ export function useImageGeneration() {
       console.log("Image generation successful, URL received:", generatedImageUrl.substring(0, 50) + "...");
       console.log("Generated prompt:", generatedPrompt);
       
-      // Store the generated prompt
+      // Store the generated prompt if available
       if (generatedPrompt) {
         setGeneratedPrompt(generatedPrompt);
       }
@@ -116,7 +117,12 @@ export function useImageGeneration() {
         
       } catch (fetchError) {
         console.error("Error fetching generated image:", fetchError);
-        throw new Error(`Error fetching image: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}`);
+        
+        // As a fallback, try to use the direct URL if we couldn't convert to base64
+        console.log("Attempting to use direct URL as fallback");
+        setGeneratedImage(generatedImageUrl);
+        setIsGenerating(false);
+        navigate("/result");
       }
     } catch (error) {
       console.error("Error generating image:", error);

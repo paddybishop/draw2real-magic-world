@@ -20,7 +20,7 @@ serve(async (req) => {
     if (!imageBase64) {
       return new Response(
         JSON.stringify({ error: 'No image data provided' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
     
@@ -30,7 +30,7 @@ serve(async (req) => {
     if (!openaiApiKey) {
       return new Response(
         JSON.stringify({ error: "OPENAI_API_KEY is not set in environment variables" }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
 
@@ -55,7 +55,7 @@ serve(async (req) => {
       console.error("OpenAI API error:", errorDetails);
       return new Response(
         JSON.stringify({ error: `OpenAI API error: ${errorDetails}` }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 502, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
 
@@ -65,7 +65,7 @@ serve(async (req) => {
       console.error("No image URL returned from OpenAI");
       return new Response(
         JSON.stringify({ error: "No image URL returned from OpenAI" }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
 
@@ -80,7 +80,7 @@ serve(async (req) => {
       console.error("Failed to download image from OpenAI:", imageResponse.status, imageResponse.statusText);
       return new Response(
         JSON.stringify({ error: "Failed to download image from OpenAI" }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
     
@@ -95,9 +95,12 @@ serve(async (req) => {
     
     if (!supabaseUrl || !supabaseServiceKey) {
       console.error("Supabase credentials missing");
+      
+      // Since OpenAI API call was successful, we can return the direct URL instead of failing
+      console.log("Returning direct OpenAI image URL instead of storing in Supabase");
       return new Response(
-        JSON.stringify({ error: "Storage configuration error" }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ imageUrl: openaiImageUrl }),
+        { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
     
@@ -155,9 +158,12 @@ serve(async (req) => {
       
     if (uploadError) {
       console.error("Failed to upload image to storage:", uploadError);
+      
+      // Since OpenAI API call was successful, we can return the direct URL instead of failing
+      console.log("Returning direct OpenAI image URL due to storage upload failure");
       return new Response(
-        JSON.stringify({ error: `Storage upload failed: ${uploadError.message}` }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ imageUrl: openaiImageUrl }),
+        { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
     
