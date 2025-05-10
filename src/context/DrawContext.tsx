@@ -7,11 +7,13 @@ interface DrawContextType {
   isGenerating: boolean;
   generationError: string | null;
   generatedPrompt: string | null;
+  isWatermarkRemoved: boolean;
   setCapturedImage: (image: string | null) => void;
   setGeneratedImage: (image: string | null) => void;
   setIsGenerating: (isGenerating: boolean) => void;
   setGenerationError: (error: string | null) => void;
   setGeneratedPrompt: (prompt: string | null) => void;
+  setIsWatermarkRemoved: (isRemoved: boolean) => void;
   resetImages: () => void;
 }
 
@@ -23,6 +25,7 @@ export const DrawProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [generatedPrompt, setGeneratedPrompt] = useState<string | null>(null);
+  const [isWatermarkRemoved, setIsWatermarkRemoved] = useState(false);
 
   const resetImages = () => {
     setCapturedImage(null);
@@ -30,6 +33,7 @@ export const DrawProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsGenerating(false);
     setGenerationError(null);
     setGeneratedPrompt(null);
+    setIsWatermarkRemoved(false);
   };
 
   return (
@@ -39,11 +43,13 @@ export const DrawProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isGenerating,
       generationError,
       generatedPrompt,
+      isWatermarkRemoved,
       setCapturedImage,
       setGeneratedImage,
       setIsGenerating,
       setGenerationError,
       setGeneratedPrompt,
+      setIsWatermarkRemoved,
       resetImages
     }}>
       {children}

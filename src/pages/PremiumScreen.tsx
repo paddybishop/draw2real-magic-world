@@ -4,10 +4,15 @@ import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import PrimaryButton from "@/components/PrimaryButton";
 import SquigglyHeading from "@/components/SquigglyHeading";
+import { useDrawContext } from "@/context/DrawContext";
 import { toast } from "@/components/ui/use-toast";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const PremiumScreen: React.FC = () => {
   const navigate = useNavigate();
+  const { generatedImage } = useDrawContext();
+  const [selectedFeature, setSelectedFeature] = React.useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = React.useState(false);
   
   const premiumFeatures = [
     {
@@ -15,29 +20,61 @@ const PremiumScreen: React.FC = () => {
       title: "Remove Watermark",
       description: "Get clean images without our logo",
       color: "bg-draw-pink",
-      price: "$2.99"
+      price: "$2.99",
+      status: "available"
     },
     {
       emoji: "🖼️",
       title: "Order Framed Print",
       description: "Get a beautiful framed print delivered",
       color: "bg-draw-turquoise",
-      price: "$19.99"
+      price: "$19.99",
+      status: "available"
     },
     {
       emoji: "🧸",
       title: "Turn into a Real Toy",
       description: "Have your drawing made into a stuffed toy",
       color: "bg-draw-purple",
-      price: "$39.99"
+      price: "$39.99",
+      status: "coming-soon"
     }
   ];
   
-  const handlePremiumFeature = (feature: string) => {
+  const handlePremiumFeature = (feature: string, status: string) => {
+    if (status === "coming-soon") {
+      toast({
+        title: "Coming Soon!",
+        description: `The ${feature} feature will be available soon. Stay tuned!`,
+      });
+      return;
+    }
+    
+    setSelectedFeature(feature);
+    setDialogOpen(true);
+  };
+  
+  const handlePayment = () => {
+    setDialogOpen(false);
+    
+    // In a real implementation, this would call a Supabase edge function to create a Stripe checkout session
     toast({
-      title: "Premium Feature",
-      description: `This would unlock the ${feature} feature after payment.`,
+      title: "Redirecting to Payment",
+      description: `You'll be redirected to our secure payment processor.`,
     });
+    
+    // Simulate redirect to payment
+    setTimeout(() => {
+      // This would be replaced with an actual redirect to Stripe
+      toast({
+        title: "Payment Successful",
+        description: `Your ${selectedFeature} has been activated!`,
+      });
+      
+      if (selectedFeature === "Remove Watermark") {
+        navigate("/result");
+      }
+    }, 2000);
   };
   
   const handleBackToShare = () => {
@@ -57,7 +94,7 @@ const PremiumScreen: React.FC = () => {
           {premiumFeatures.map((feature, index) => (
             <div 
               key={index}
-              className="bg-white rounded-2xl p-4 shadow-lg hover:shadow-xl transition-all"
+              className="bg-white rounded-2xl p-4 shadow-lg hover:shadow-xl transition-all relative"
             >
               <div className="flex items-center">
                 <div className={`${feature.color} w-16 h-16 rounded-xl flex items-center justify-center text-3xl`}>
@@ -71,12 +108,20 @@ const PremiumScreen: React.FC = () => {
                   <PrimaryButton
                     color={index === 0 ? "pink" : index === 1 ? "turquoise" : "purple"}
                     size="small"
-                    onClick={() => handlePremiumFeature(feature.title)}
+                    onClick={() => handlePremiumFeature(feature.title, feature.status)}
                   >
-                    {feature.price}
+                    {feature.status === "coming-soon" ? "Soon" : feature.price}
                   </PrimaryButton>
                 </div>
               </div>
+              
+              {feature.status === "coming-soon" && (
+                <div className="absolute top-0 right-0 -mt-2 -mr-2">
+                  <span className="bg-draw-yellow text-xs font-bold px-2 py-1 rounded-full animate-pulse">
+                    Coming Soon
+                  </span>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -100,6 +145,60 @@ const PremiumScreen: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Purchase {selectedFeature}</DialogTitle>
+            <DialogDescription>
+              {selectedFeature === "Remove Watermark" ? (
+                "Get your image without our logo for just $2.99"
+              ) : selectedFeature === "Order Framed Print" ? (
+                "Get your drawing professionally framed and delivered to your door for $19.99"
+              ) : (
+                "Turn your creation into a physical toy for $39.99"
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center space-x-2 mt-4">
+            {generatedImage && (
+              <div className="border-4 border-white rounded-lg shadow-md overflow-hidden w-24 h-24">
+                <img 
+                  src={generatedImage} 
+                  alt="Your creation" 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
+            <div>
+              <p className="font-medium">{selectedFeature}</p>
+              <p className="text-sm text-gray-500">One-time purchase</p>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2 mt-4">
+            <PrimaryButton
+              color="yellow"
+              className="flex-1"
+              onClick={() => setDialogOpen(false)}
+            >
+              Cancel
+            </PrimaryButton>
+            <PrimaryButton
+              color="purple"
+              className="flex-1"
+              onClick={handlePayment}
+            >
+              <div className="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect width="20" height="14" x="2" y="5" rx="2" />
+                  <line x1="2" x2="22" y1="10" y2="10" />
+                </svg>
+                Proceed to Payment
+              </div>
+            </PrimaryButton>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 };

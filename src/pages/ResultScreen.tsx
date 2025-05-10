@@ -9,7 +9,7 @@ import { toast } from "@/components/ui/use-toast";
 
 const ResultScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { capturedImage, generatedImage, generatedPrompt, resetImages } = useDrawContext();
+  const { capturedImage, generatedImage, generatedPrompt, isWatermarkRemoved, resetImages } = useDrawContext();
   const [showConfetti, setShowConfetti] = useState(true);
   const [compareMode, setCompareMode] = useState<boolean>(false);
   const [showPrompt, setShowPrompt] = useState<boolean>(false);
@@ -83,10 +83,12 @@ const ResultScreen: React.FC = () => {
                 className="w-full h-full object-cover"
               />
               
-              {/* Watermark */}
-              <div className="absolute bottom-2 right-2 text-white text-xs font-bold opacity-40 bg-black bg-opacity-30 px-2 py-1 rounded">
-                Draw2Real
-              </div>
+              {/* Watermark - only show if not removed */}
+              {!isWatermarkRemoved && (
+                <div className="absolute bottom-2 right-2 text-white text-xs font-bold opacity-40 bg-black bg-opacity-30 px-2 py-1 rounded">
+                  Draw2Real
+                </div>
+              )}
             </div>
           )}
         </div>

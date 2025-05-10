@@ -22,6 +22,12 @@ const MakeRealScreen: React.FC = () => {
           loadingDots={loadingDots}
         />
         
+        {isGenerating && (
+          <p className="text-sm text-gray-600 italic text-center">
+            This could take up to 20 seconds as our AI analyzes your drawing and creates magic...
+          </p>
+        )}
+        
         <PrimaryButton
           color="purple"
           size="large"
