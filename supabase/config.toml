@@ -11,3 +11,10 @@ verify_jwt = false # Allow the function to be called without authentication
 # Storage configuration
 [storage]
 file_size_limit = "5MB"
+
+# Storage bucket specific configurations
+[[storage.buckets]]
+name = "generated-images"
+public = true
+file_size_limit = "5MB"
+allowed_mime_types = ["image/png", "image/jpeg", "image/jpg"]

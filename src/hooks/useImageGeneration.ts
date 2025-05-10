@@ -59,27 +59,29 @@ export function useImageGeneration() {
       const timestamp = new Date().getTime();
       const filePath = `original-drawings/drawing-${timestamp}.jpg`;
       
-      console.log("Uploading original drawing to Supabase Storage");
-      
-      // Make sure the bucket exists before trying to upload
-      const { data: bucketData, error: bucketError } = await supabase
-        .storage
-        .getBucket('generated-images');
-      
-      // If bucket doesn't exist, create it with public access
-      if (bucketError && bucketError.message.includes('not found')) {
-        console.log("Bucket doesn't exist, creating it with public access");
-        const { error: createBucketError } = await supabase
-          .storage
-          .createBucket('generated-images', { 
-            public: true, 
+      // Ensure the bucket exists before uploading
+      try {
+        console.log("Checking if 'generated-images' bucket exists");
+        const { data: buckets } = await supabase.storage.listBuckets();
+        const bucketExists = buckets?.some(bucket => bucket.name === 'generated-images');
+        
+        if (!bucketExists) {
+          console.log("Creating 'generated-images' bucket with public access");
+          const { error: createBucketError } = await supabase.storage.createBucket('generated-images', {
+            public: true,
             fileSizeLimit: 5242880 // 5MB
           });
-        
-        if (createBucketError) {
-          throw new Error(`Failed to create storage bucket: ${createBucketError.message}`);
+          
+          if (createBucketError) {
+            throw new Error(`Failed to create storage bucket: ${createBucketError.message}`);
+          }
         }
+      } catch (bucketError) {
+        console.error("Error managing bucket:", bucketError);
+        // Continue with upload attempt even if bucket check/creation fails
       }
+      
+      console.log("Uploading original drawing to Supabase Storage");
       
       const { data: uploadData, error: uploadError } = await supabase
         .storage
