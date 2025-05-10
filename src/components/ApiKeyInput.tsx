@@ -27,7 +27,7 @@ const ApiKeyInput: React.FC<ApiKeyInputProps> = ({ apiKeyInput, setApiKeyInput }
             Your API key is only used for this request and is never stored on our servers.
           </p>
           <p className="italic">
-            Note: Soon, this app will use a Supabase Edge Function, eliminating the need to enter an API key.
+            Note: For enhanced security, we recommend adding your API key to Supabase Secrets.
           </p>
         </div>
       </div>
