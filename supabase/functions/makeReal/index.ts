@@ -15,16 +15,16 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { imageUrl } = await req.json();
+    const { imageData } = await req.json();
 
-    if (!imageUrl) {
+    if (!imageData) {
       return new Response(
-        JSON.stringify({ error: 'Missing image URL' }),
+        JSON.stringify({ error: 'Missing image data' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log("Received image URL:", imageUrl);
+    console.log("Received base64 image data");
 
     // Step 1: Ask GPT-4o to look at the image and generate a DALL·E-style prompt
     console.log("Sending image to GPT-4o for analysis...");
@@ -47,7 +47,7 @@ serve(async (req: Request) => {
               {
                 type: 'image_url',
                 image_url: {
-                  url: imageUrl,
+                  url: imageData,
                 },
               },
             ],
@@ -113,110 +113,11 @@ serve(async (req: Request) => {
       );
     }
 
-    // Download the image from DALL-E
-    console.log("Downloading image from DALL-E...");
-    const imageResponse = await fetch(generatedImageUrl);
-    
-    if (!imageResponse.ok) {
-      console.error("Failed to download image from DALL-E:", imageResponse.status, imageResponse.statusText);
-      return new Response(
-        JSON.stringify({ error: "Failed to download image from DALL-E" }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    
-    // Get the image data as blob
-    const imageBlob = await imageResponse.blob();
-    const arrayBuffer = await imageBlob.arrayBuffer();
-    const imageBytes = new Uint8Array(arrayBuffer);
-    
-    // Create a Supabase client with service role key
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    
-    if (!supabaseUrl || !supabaseServiceKey) {
-      console.error("Supabase credentials missing");
-      return new Response(
-        JSON.stringify({ error: "Storage configuration error" }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    
-    // Create client with service role key for admin privileges
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
-    // Create a unique filename
-    const filename = `generated-image-${Date.now()}.png`;
-    const bucketName = 'generated-images';
-    
-    console.log(`Uploading image to Supabase Storage bucket '${bucketName}' as ${filename}`);
-    
-    try {
-      // Check if bucket exists and create if needed
-      const { data: buckets, error: bucketListError } = await supabase
-        .storage
-        .listBuckets();
-      
-      if (bucketListError) {
-        console.error("Error listing buckets:", bucketListError);
-      } else {
-        const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
-        
-        if (!bucketExists) {
-          console.log(`Bucket '${bucketName}' not found, attempting to create it`);
-          const { error: createError } = await supabase
-            .storage
-            .createBucket(bucketName, {
-              public: true,
-              fileSizeLimit: 5242880 // 5MB
-            });
-          
-          if (createError) {
-            console.error("Error creating bucket:", createError);
-          } else {
-            console.log(`Successfully created bucket '${bucketName}'`);
-          }
-        } else {
-          console.log(`Bucket '${bucketName}' already exists`);
-        }
-      }
-    } catch (bucketError) {
-      console.error("Error managing bucket:", bucketError);
-      // Continue with upload attempt even if bucket check/creation fails
-    }
-    
-    // Upload to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabase
-      .storage
-      .from(bucketName)
-      .upload(filename, imageBytes, {
-        contentType: 'image/png',
-        upsert: true
-      });
-      
-    if (uploadError) {
-      console.error("Failed to upload image to storage:", uploadError);
-      return new Response(
-        JSON.stringify({ error: `Storage upload failed: ${uploadError.message}` }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    
-    console.log("Successfully uploaded image to Supabase Storage");
-    
-    // Get the public URL
-    const { data: publicUrlData } = supabase
-      .storage
-      .from(bucketName)
-      .getPublicUrl(filename);
-    
-    const finalImageUrl = publicUrlData.publicUrl;
-    console.log("Generated public URL:", finalImageUrl);
-
-    // Return both the prompt and the image URL for better context
+    // Return both the prompt and the direct image URL from OpenAI
+    // This avoids storing in Supabase storage which is causing RLS issues
     return new Response(
       JSON.stringify({ 
-        imageUrl: finalImageUrl, 
+        imageUrl: generatedImageUrl, 
         prompt: generatedPrompt 
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
