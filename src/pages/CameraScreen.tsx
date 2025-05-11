@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
@@ -13,7 +14,7 @@ const CameraScreen: React.FC = () => {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isCameraAttempted, setIsCameraAttempted] = useState(false);
-  const [status, setStatus] = useState("Initializing...");
+  const [status, setStatus] = useState("Loading camera...");
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -51,19 +52,18 @@ const CameraScreen: React.FC = () => {
         
         videoRef.current.onloadedmetadata = () => {
           console.log("Video metadata loaded");
-          setStatus("Camera ready!");
-          setCameraActive(true);
+          // Move play() inside onloadedmetadata to match the HTML structure provided
+          videoRef.current?.play()
+            .then(() => {
+              console.log("Video playback started");
+              setStatus("Camera ready!");
+              setCameraActive(true);
+            })
+            .catch(playError => {
+              console.error("Error playing video:", playError);
+              setStatus(`Error starting video: ${playError instanceof Error ? playError.message : "Unknown error"}`);
+            });
         };
-        
-        // Explicitly call play() for better mobile compatibility
-        try {
-          await videoRef.current.play();
-          console.log("Video playback started");
-        } catch (playError) {
-          console.error("Error playing video:", playError);
-          setStatus(`Error starting video: ${playError instanceof Error ? playError.message : "Unknown error"}`);
-          throw playError; // Re-throw to be caught by the outer catch block
-        }
       } else {
         throw new Error("Video element became unavailable");
       }
@@ -132,20 +132,33 @@ const CameraScreen: React.FC = () => {
   useEffect(() => {
     console.log("CameraScreen mounted, initializing camera");
     
-    // Wait for the component to fully mount before accessing videoRef
-    const timerRef = setTimeout(() => {
-      console.log("Starting camera after timeout");
-      // Check if component is still mounted
-      if (videoRef.current) {
-        startCamera();
-      } else {
-        console.error("Video element not found after mount");
-      }
-    }, 500);
+    // Use DOMContentLoaded event listener to match the provided HTML structure
+    const handleDOMContentLoaded = () => {
+      console.log("DOM content loaded, starting camera");
+      startCamera();
+    };
+    
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', handleDOMContentLoaded);
+    } else {
+      // DOM already loaded, start camera after a short delay
+      const timerRef = setTimeout(() => {
+        console.log("Starting camera after timeout");
+        if (videoRef.current) {
+          startCamera();
+        } else {
+          console.error("Video element not found after mount");
+        }
+      }, 500);
+      
+      return () => {
+        clearTimeout(timerRef);
+      };
+    }
     
     return () => {
       console.log("CameraScreen unmounting, stopping camera");
-      clearTimeout(timerRef);
+      document.removeEventListener('DOMContentLoaded', handleDOMContentLoaded);
       stopCamera();
     };
   }, []);
@@ -153,7 +166,7 @@ const CameraScreen: React.FC = () => {
   return (
     <Layout title="Take a Photo" showBackButton>
       <div className="w-full max-w-md flex flex-col items-center justify-center gap-4">
-        <p className="text-center text-sm font-medium mb-2" aria-live="polite">{status}</p>
+        <p className="text-center text-sm font-medium mb-2" aria-live="polite" id="status">{status}</p>
         
         <div className="relative w-full aspect-square rounded-3xl overflow-hidden border-8 border-white shadow-xl bg-black">
           {cameraActive ? (
@@ -163,7 +176,7 @@ const CameraScreen: React.FC = () => {
               playsInline
               muted
               className="absolute inset-0 w-full h-full object-cover"
-              id="camera-video-element"
+              id="camera"
             />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center gap-4 p-6 text-center">
