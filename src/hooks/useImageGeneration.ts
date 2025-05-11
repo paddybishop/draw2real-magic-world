@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useDrawContext } from "@/context/DrawContext";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { uploadImageToStorage, blobToBase64 } from "@/utils/imageStorage";
 
 export function useImageGeneration() {
   const navigate = useNavigate();
@@ -37,75 +38,6 @@ export function useImageGeneration() {
       if (interval) clearInterval(interval);
     };
   }, [isGenerating]);
-
-  // Helper function to upload a base64 image to Supabase storage
-  const uploadImageToStorage = async (base64Image: string, fileName: string): Promise<string | null> => {
-    try {
-      console.log(`Uploading image to Supabase storage: ${fileName}`);
-      
-      // Convert base64 to blob
-      let imageData = base64Image;
-      if (base64Image.startsWith('data:')) {
-        imageData = base64Image.split(',')[1];
-      }
-      
-      const binaryImageData = atob(imageData);
-      const array = new Uint8Array(binaryImageData.length);
-      for (let i = 0; i < binaryImageData.length; i++) {
-        array[i] = binaryImageData.charCodeAt(i);
-      }
-      const blob = new Blob([array], { type: 'image/png' });
-      
-      // Check if bucket exists and create it if it doesn't
-      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
-      
-      if (bucketsError) {
-        console.error("Error checking buckets:", bucketsError);
-      } else {
-        const bucketExists = buckets.some(bucket => bucket.name === 'generated-images');
-        
-        if (!bucketExists) {
-          console.log("Creating 'generated-images' bucket");
-          const { error: createError } = await supabase.storage.createBucket('generated-images', {
-            public: true
-          });
-          
-          if (createError) {
-            console.error("Error creating bucket:", createError);
-            // Continue anyway, as the bucket might exist but not be visible
-          } else {
-            console.log("Bucket created successfully");
-          }
-        }
-      }
-
-      // Upload to Supabase storage with public access
-      const { data, error } = await supabase
-        .storage
-        .from('generated-images')
-        .upload(fileName, blob, {
-          contentType: 'image/png',
-          upsert: true
-        });
-        
-      if (error) {
-        console.error("Storage upload error:", error);
-        return null;
-      }
-      
-      // Get the public URL
-      const { data: publicUrlData } = supabase
-        .storage
-        .from('generated-images')
-        .getPublicUrl(fileName);
-        
-      console.log("Uploaded successfully, public URL:", publicUrlData.publicUrl);
-      return publicUrlData.publicUrl;
-    } catch (error) {
-      console.error("Error uploading to storage:", error);
-      return null;
-    }
-  };
   
   const handleMakeReal = async () => {
     if (!capturedImage) {
@@ -223,19 +155,6 @@ export function useImageGeneration() {
         variant: "destructive"
       });
     }
-  };
-
-  // Helper function to convert blob to base64
-  const blobToBase64 = (blob: Blob): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(blob);
-      reader.onloadend = () => {
-        const base64data = reader.result as string;
-        resolve(base64data);
-      };
-      reader.onerror = reject;
-    });
   };
 
   return {
