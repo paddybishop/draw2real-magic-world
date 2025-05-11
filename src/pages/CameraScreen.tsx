@@ -18,8 +18,22 @@ const CameraScreen: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const startCamera = async () => {
+    // Make sure we're attempting camera access
     setIsCameraAttempted(true);
-    setStatus("Requesting access...");
+    setStatus("Requesting camera access...");
+
+    // Verify video element exists
+    if (!videoRef.current) {
+      console.error("Video element is not available in the DOM");
+      setCameraError("Video element not found");
+      setStatus("Error: Camera element missing");
+      toast({
+        title: "Camera Error",
+        description: "Camera element is not available. Please try refreshing the page.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     try {
       // Try to get the camera with explicit width and height constraints
@@ -31,25 +45,30 @@ const CameraScreen: React.FC = () => {
         } 
       });
       
+      // Double check that videoRef is still valid when we get the stream
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        
         videoRef.current.onloadedmetadata = () => {
+          console.log("Video metadata loaded");
           setStatus("Camera ready!");
           setCameraActive(true);
         };
         
         // Explicitly call play() for better mobile compatibility
-        videoRef.current.play()
-          .catch(playError => {
-            console.error("Error playing video:", playError);
-            setStatus(`Error starting video: ${playError.message}`);
-          });
+        try {
+          await videoRef.current.play();
+          console.log("Video playback started");
+        } catch (playError) {
+          console.error("Error playing video:", playError);
+          setStatus(`Error starting video: ${playError instanceof Error ? playError.message : "Unknown error"}`);
+          throw playError; // Re-throw to be caught by the outer catch block
+        }
       } else {
-        setCameraError("Video element not found");
-        setStatus("Error: Camera element missing");
+        throw new Error("Video element became unavailable");
       }
     } catch (err) {
-      console.error("Error accessing camera:", err);
+      console.error("Camera access error:", err);
       setCameraError(`Camera access error: ${err instanceof Error ? err.message : "Unknown error"}`);
       setStatus(`Camera access failed: ${err instanceof Error ? err.message : "Unknown error"}`);
       toast({
@@ -62,11 +81,16 @@ const CameraScreen: React.FC = () => {
   
   const stopCamera = () => {
     if (videoRef.current && videoRef.current.srcObject) {
-      const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
-      tracks.forEach(track => track.stop());
-      videoRef.current.srcObject = null;
-      setCameraActive(false);
-      setStatus("Camera stopped");
+      try {
+        const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+        tracks.forEach(track => track.stop());
+        videoRef.current.srcObject = null;
+        setCameraActive(false);
+        setStatus("Camera stopped");
+        console.log("Camera successfully stopped");
+      } catch (error) {
+        console.error("Error stopping camera:", error);
+      }
     }
   };
   
@@ -106,23 +130,22 @@ const CameraScreen: React.FC = () => {
   };
   
   useEffect(() => {
-    // Ensure DOM is fully loaded before starting camera
-    if (document.readyState === "complete") {
-      startCamera();
-    } else {
-      window.addEventListener('DOMContentLoaded', startCamera);
-      // Set a reasonable timeout as a fallback
-      const timer = setTimeout(() => {
+    console.log("CameraScreen mounted, initializing camera");
+    
+    // Wait for the component to fully mount before accessing videoRef
+    const timerRef = setTimeout(() => {
+      console.log("Starting camera after timeout");
+      // Check if component is still mounted
+      if (videoRef.current) {
         startCamera();
-      }, 1000);
-      
-      return () => {
-        window.removeEventListener('DOMContentLoaded', startCamera);
-        clearTimeout(timer);
-      };
-    }
+      } else {
+        console.error("Video element not found after mount");
+      }
+    }, 500);
     
     return () => {
+      console.log("CameraScreen unmounting, stopping camera");
+      clearTimeout(timerRef);
       stopCamera();
     };
   }, []);
@@ -140,6 +163,7 @@ const CameraScreen: React.FC = () => {
               playsInline
               muted
               className="absolute inset-0 w-full h-full object-cover"
+              id="camera-video-element"
             />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center gap-4 p-6 text-center">
