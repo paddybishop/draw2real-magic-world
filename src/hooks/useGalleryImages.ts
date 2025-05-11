@@ -49,9 +49,16 @@ export const useGalleryImages = () => {
             return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
           });
         
-        // Group files by timestamp to match originals with generated images
-        const generatedImages = sortedImages.filter(item => item.name.startsWith('generated-'));
-        const originalImages = sortedImages.filter(item => item.name.startsWith('original-'));
+        // Find all generated images
+        const generatedImages = sortedImages.filter(item => 
+          item.name.startsWith('generated-') || 
+          item.name.includes('generated-image-')
+        );
+        
+        // Find all original images
+        const originalImages = sortedImages.filter(item => 
+          item.name.startsWith('original-')
+        );
         
         console.log("Found generated images:", generatedImages.length);
         console.log("Found original images:", originalImages.length);
@@ -59,6 +66,7 @@ export const useGalleryImages = () => {
         // Create pairs of original and generated images
         const imagePairs: GalleryImage[] = [];
         
+        // First, add all generated images
         for (const genImage of generatedImages) {
           // Create a public URL for the generated image
           const { data: genPublicUrlData } = supabase
@@ -66,11 +74,21 @@ export const useGalleryImages = () => {
             .from('generated-images')
             .getPublicUrl(genImage.name);
             
-          // Extract timestamp from filename (format: generated-{timestamp}.png)
-          const timestamp = genImage.name.replace('generated-', '').replace('.png', '');
+          // Extract timestamp from filename
+          let timestamp = "";
+          if (genImage.name.startsWith('generated-')) {
+            // Format: generated-{timestamp}.png
+            timestamp = genImage.name.replace('generated-', '').replace('.png', '');
+          } else if (genImage.name.includes('generated-image-')) {
+            // Format: generated-image-{timestamp}.png
+            timestamp = genImage.name.replace('generated-image-', '').replace('.png', '');
+          }
           
           // Find matching original image
-          const originalImage = originalImages.find(img => img.name === `original-${timestamp}.png`);
+          const originalImage = originalImages.find(img => 
+            img.name === `original-${timestamp}.png`
+          );
+          
           let originalUrl = "";
           
           if (originalImage) {
@@ -93,6 +111,39 @@ export const useGalleryImages = () => {
           });
         }
         
+        // Then, check for any original images that don't have a generated counterpart yet
+        for (const origImage of originalImages) {
+          const timestamp = origImage.name.replace('original-', '').replace('.png', '');
+          
+          // Check if we already have this timestamp in our pairs
+          const alreadyAdded = imagePairs.some(pair => 
+            pair.id === `image-${timestamp}` || 
+            (pair.original && pair.original.includes(`original-${timestamp}`))
+          );
+          
+          if (!alreadyAdded) {
+            // Get public URL for original image
+            const { data: origPublicUrlData } = supabase
+              .storage
+              .from('generated-images')
+              .getPublicUrl(origImage.name);
+              
+            // Add as a standalone pair (with no generated image yet)
+            imagePairs.push({
+              id: `image-${timestamp}`,
+              original: origPublicUrlData.publicUrl,
+              generated: "", // No generated image yet
+              createdAt: origImage.created_at,
+              prompt: ""
+            });
+          }
+        }
+        
+        // Sort final results by timestamp (most recent first)
+        imagePairs.sort((a, b) => {
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+        
         setImages(imagePairs);
       }
     } catch (error) {
@@ -109,3 +160,4 @@ export const useGalleryImages = () => {
   
   return { images, loading, fetchImages };
 };
+

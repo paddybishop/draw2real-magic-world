@@ -123,20 +123,28 @@ export function useImageGeneration() {
         const base64data = await blobToBase64(blob);
         
         // Store the generated image using the edge function
+        console.log("Uploading generated image via edge function");
         const storedGeneratedImageUrl = await uploadImageToStorage(base64data, generatedFileName);
+        
+        if (!storedGeneratedImageUrl) {
+          console.warn("Could not upload generated image to storage, using direct URL");
+          setGeneratedImage(generatedImageUrl);
+        } else {
+          console.log("Generated image stored successfully:", storedGeneratedImageUrl);
+          setGeneratedImage(storedGeneratedImageUrl);
+        }
         
         console.log("Images stored:", { 
           originalImageUrl, 
-          storedGeneratedImageUrl 
+          storedGeneratedImageUrl: storedGeneratedImageUrl || generatedImageUrl
         });
         
         // Continue with the flow
-        setGeneratedImage(base64data);
         setIsGenerating(false);
         navigate("/result");
         
       } catch (storageError) {
-        console.error("Error storing images:", storageError);
+        console.error("Error storing generated image:", storageError);
         // Non-critical error, continue with the flow using the direct URL
         setGeneratedImage(generatedImageUrl);
         setIsGenerating(false);
