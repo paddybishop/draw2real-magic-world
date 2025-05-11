@@ -1,64 +1,30 @@
+
 import React, { useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import PrimaryButton from "@/components/PrimaryButton";
 import { useDrawContext } from "@/context/DrawContext";
-import { Camera, CameraOff } from "lucide-react";
+import { Camera, CameraOff, Upload } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
-import SquigglyHeading from "@/components/SquigglyHeading";
 
 const CameraScreen: React.FC = () => {
   const navigate = useNavigate();
   const { setCapturedImage } = useDrawContext();
-  const [cameraActive, setCameraActive] = useState(false);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-  const [isCameraAttempted, setIsCameraAttempted] = useState(false);
-  const [status, setStatus] = useState("Loading camera...");
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Function to poll for the video element to exist in the DOM
-  const waitForVideoElement = (callback: () => void) => {
-    console.log("Starting to poll for video element");
-    
-    const checkElement = () => {
-      const videoElement = document.getElementById('camera');
-      
-      if (videoElement) {
-        console.log("Video element found in DOM");
-        callback();
-        return;
-      }
-      
-      console.log("Video element not found, polling...");
-      setTimeout(checkElement, 100); // Check every 100ms
-    };
-    
-    checkElement();
-  };
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   
-  const startCamera = async () => {
-    // Make sure we're attempting camera access
-    setIsCameraAttempted(true);
-    setStatus("Requesting camera access...");
+  // Initialize camera on component mount
+  useEffect(() => {
+    let mounted = true;
     
-    waitForVideoElement(async () => {
-      // Verify video element exists
-      if (!videoRef.current) {
-        console.error("Video element is not available in the DOM");
-        setCameraError("Video element not found");
-        setStatus("Error: Camera element missing");
-        toast({
-          title: "Camera Error",
-          description: "Camera element is not available. Please try refreshing the page.",
-          variant: "destructive"
-        });
-        return;
-      }
-      
+    const initCamera = async () => {
       try {
-        // Try to get the camera with explicit width and height constraints
-        const stream = await navigator.mediaDevices.getUserMedia({ 
+        // Get user media with camera
+        const mediaStream = await navigator.mediaDevices.getUserMedia({ 
           video: { 
             facingMode: "environment",
             width: { ideal: 1280 },
@@ -66,138 +32,150 @@ const CameraScreen: React.FC = () => {
           } 
         });
         
-        // Double check that videoRef is still valid when we get the stream
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
+        // Only set state if component is still mounted
+        if (mounted) {
+          setStream(mediaStream);
           
-          videoRef.current.onloadedmetadata = () => {
-            console.log("Video metadata loaded");
-            // Move play() inside onloadedmetadata to match the HTML structure provided
-            videoRef.current?.play()
-              .then(() => {
-                console.log("Video playback started");
-                setStatus("Camera ready!");
-                setCameraActive(true);
-              })
-              .catch(playError => {
-                console.error("Error playing video:", playError);
-                setStatus(`Error starting video: ${playError instanceof Error ? playError.message : "Unknown error"}`);
-              });
-          };
-        } else {
-          throw new Error("Video element became unavailable");
+          if (videoRef.current) {
+            videoRef.current.srcObject = mediaStream;
+          }
         }
       } catch (err) {
         console.error("Camera access error:", err);
-        setCameraError(`Camera access error: ${err instanceof Error ? err.message : "Unknown error"}`);
-        setStatus(`Camera access failed: ${err instanceof Error ? err.message : "Unknown error"}`);
-        toast({
-          title: "Camera Access Error",
-          description: "Could not access camera. Please check permissions or try uploading an image instead.",
-          variant: "destructive"
-        });
+        
+        if (mounted) {
+          setCameraError(err instanceof Error ? err.message : "Failed to access camera");
+          toast({
+            title: "Camera Access Error",
+            description: "Could not access your camera. Please check permissions or try uploading an image.",
+            variant: "destructive"
+          });
+        }
       }
-    });
-  };
+    };
+    
+    initCamera();
+    
+    // Clean up on unmount
+    return () => {
+      mounted = false;
+      
+      // Stop all tracks when component unmounts
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
   
-  const stopCamera = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      try {
-        const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
-        tracks.forEach(track => track.stop());
-        videoRef.current.srcObject = null;
-        setCameraActive(false);
-        setStatus("Camera stopped");
-        console.log("Camera successfully stopped");
-      } catch (error) {
-        console.error("Error stopping camera:", error);
-      }
-    }
-  };
+  // Handle video element events
+  useEffect(() => {
+    const videoElement = videoRef.current;
+    
+    if (!videoElement) return;
+    
+    const handleCanPlay = () => {
+      setCameraReady(true);
+    };
+    
+    const handleError = (e: Event) => {
+      console.error("Video element error:", e);
+      setCameraReady(false);
+      setCameraError("Video playback error");
+    };
+    
+    // Add event listeners
+    videoElement.addEventListener("canplay", handleCanPlay);
+    videoElement.addEventListener("error", handleError);
+    
+    // Clean up
+    return () => {
+      videoElement.removeEventListener("canplay", handleCanPlay);
+      videoElement.removeEventListener("error", handleError);
+    };
+  }, []);
   
   const capturePhoto = () => {
-    if (videoRef.current) {
+    if (!videoRef.current || !cameraReady) return;
+    
+    try {
       const canvas = document.createElement("canvas");
       canvas.width = videoRef.current.videoWidth;
       canvas.height = videoRef.current.videoHeight;
-      const ctx = canvas.getContext("2d");
       
-      if (ctx) {
-        ctx.drawImage(videoRef.current, 0, 0);
-        const imageData = canvas.toDataURL("image/jpeg");
-        setCapturedImage(imageData);
-        stopCamera();
-        navigate("/preview");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        toast({
+          title: "Capture Error",
+          description: "Could not create image context",
+          variant: "destructive"
+        });
+        return;
       }
+      
+      // Draw video frame to canvas
+      ctx.drawImage(videoRef.current, 0, 0);
+      
+      // Convert to data URL
+      const imageData = canvas.toDataURL("image/jpeg");
+      setCapturedImage(imageData);
+      navigate("/preview");
+    } catch (err) {
+      console.error("Error capturing photo:", err);
+      toast({
+        title: "Capture Failed",
+        description: "Could not capture image from camera",
+        variant: "destructive"
+      });
     }
   };
   
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setCapturedImage(event.target.result as string);
-          navigate("/preview");
-        }
-      };
-      reader.readAsDataURL(file);
-    }
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        setCapturedImage(event.target.result as string);
+        navigate("/preview");
+      }
+    };
+    reader.onerror = () => {
+      toast({
+        title: "Upload Failed",
+        description: "Could not read the selected file",
+        variant: "destructive"
+      });
+    };
+    reader.readAsDataURL(file);
   };
   
   const triggerFileInput = () => {
     fileInputRef.current?.click();
   };
-  
-  useEffect(() => {
-    console.log("CameraScreen mounted, initializing camera");
-    
-    // Start camera initialization when component mounts
-    startCamera();
-    
-    return () => {
-      console.log("CameraScreen unmounting, stopping camera");
-      stopCamera();
-    };
-  }, []);
-  
+
   return (
     <Layout title="Take a Photo" showBackButton>
       <div className="w-full max-w-md flex flex-col items-center justify-center gap-4">
-        <p className="text-center text-sm font-medium mb-2" aria-live="polite" id="status">{status}</p>
-        
         <div className="relative w-full aspect-square rounded-3xl overflow-hidden border-8 border-white shadow-xl bg-black">
-          {cameraActive ? (
+          {/* Camera view or error state */}
+          {cameraError ? (
+            <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center">
+              <CameraOff className="w-12 h-12 text-draw-pink mb-2" />
+              <h3 className="text-white text-xl mb-2">Camera Not Available</h3>
+              <p className="text-white text-sm mb-4">
+                {cameraError}. Please use the upload button below.
+              </p>
+            </div>
+          ) : (
             <video 
-              ref={videoRef} 
-              autoPlay 
+              ref={videoRef}
+              autoPlay
               playsInline
               muted
               className="absolute inset-0 w-full h-full object-cover"
               id="camera"
             />
-          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center gap-4 p-6 text-center">
-              {!isCameraAttempted ? (
-                <p className="text-white">{status}</p>
-              ) : cameraError ? (
-                <>
-                  <CameraOff className="w-12 h-12 text-draw-pink mb-2" />
-                  <SquigglyHeading className="text-white text-xl mb-2">
-                    Camera Not Available
-                  </SquigglyHeading>
-                  <p className="text-white text-sm mb-4">
-                    Please use the upload button below to select an image from your device.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <Camera className="w-12 h-12 text-draw-yellow animate-pulse mb-2" />
-                  <p className="text-white">{status}</p>
-                </>
-              )}
-            </div>
           )}
           
           {/* Drawing frame overlay */}
@@ -209,19 +187,19 @@ const CameraScreen: React.FC = () => {
           </div>
         </div>
         
-        <div className="flex gap-4 mt-4">
+        {/* Camera status indicator */}
+        <p className="text-center text-sm font-medium" aria-live="polite">
+          {cameraReady ? "Camera ready" : cameraError ? "Camera unavailable" : "Initializing camera..."}
+        </p>
+        
+        {/* Action buttons */}
+        <div className="flex gap-4 mt-2">
           <PrimaryButton
             color="yellow"
             onClick={triggerFileInput}
           >
             <div className="flex items-center justify-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/>
-                <line x1="16" x2="22" y1="5" y2="5"/>
-                <line x1="19" x2="19" y1="2" y2="8"/>
-                <circle cx="9" cy="9" r="2"/>
-                <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
-              </svg>
+              <Upload size={20} />
               Upload Image
             </div>
           </PrimaryButton>
@@ -229,13 +207,10 @@ const CameraScreen: React.FC = () => {
           <PrimaryButton 
             color="pink"
             onClick={capturePhoto}
-            disabled={!cameraActive}
+            disabled={!cameraReady}
           >
             <div className="flex items-center justify-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="13" r="3"/>
-                <path d="M5 7h2a2 2 0 0 0 2-2 1 1 0 0 1 1-1h4a1 1 0 0 1 1 1 2 2 0 0 0 2 2h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"/>
-              </svg>
+              <Camera size={20} />
               Snap!
             </div>
           </PrimaryButton>
