@@ -41,24 +41,50 @@ const Gallery: React.FC = () => {
             .filter(item => !item.name.startsWith('.'))
             .sort((a, b) => {
               return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-            })
-            .map((item, index) => {
-              // Get the public URL for each image
-              const { data: publicUrlData } = supabase
+            });
+          
+          // Group files by timestamp to match originals with generated images
+          const generatedImages = sortedImages.filter(item => item.name.startsWith('generated-'));
+          const originalImages = sortedImages.filter(item => item.name.startsWith('original-'));
+          
+          // Create pairs of original and generated images
+          const imagePairs: GalleryImage[] = [];
+          
+          for (const genImage of generatedImages) {
+            // Create a public URL for the generated image
+            const { data: genPublicUrlData } = supabase
+              .storage
+              .from('generated-images')
+              .getPublicUrl(genImage.name);
+              
+            // Extract timestamp from filename (format: generated-{timestamp}.png)
+            const timestamp = genImage.name.replace('generated-', '').replace('.png', '');
+            
+            // Find matching original image
+            const originalImage = originalImages.find(img => img.name === `original-${timestamp}.png`);
+            let originalUrl = "";
+            
+            if (originalImage) {
+              // Get public URL for original image
+              const { data: origPublicUrlData } = supabase
                 .storage
                 .from('generated-images')
-                .getPublicUrl(item.name);
+                .getPublicUrl(originalImage.name);
                 
-              return {
-                id: item.id || `image-${index}`,
-                generated: publicUrlData.publicUrl,
-                original: "", // We'll add this in the future when we store original drawings
-                createdAt: item.created_at,
-                prompt: "" // We'll add this in the future when we store prompts
-              };
-            });
+              originalUrl = origPublicUrlData.publicUrl;
+            }
             
-          setImages(sortedImages);
+            // Add to image pairs
+            imagePairs.push({
+              id: genImage.id || `image-${timestamp}`,
+              generated: genPublicUrlData.publicUrl,
+              original: originalUrl,
+              createdAt: genImage.created_at,
+              prompt: "" // We don't have prompt data stored yet
+            });
+          }
+          
+          setImages(imagePairs);
         }
       } catch (error) {
         console.error("Error fetching images:", error);
@@ -72,7 +98,41 @@ const Gallery: React.FC = () => {
       }
     };
     
-    fetchImages();
+    // Check if the storage bucket exists, and create it if it doesn't
+    const checkAndCreateBucket = async () => {
+      try {
+        const { data: buckets, error } = await supabase.storage.listBuckets();
+        
+        if (error) {
+          console.error("Error checking buckets:", error);
+          return;
+        }
+        
+        const bucketExists = buckets.some(bucket => bucket.name === 'generated-images');
+        
+        if (!bucketExists) {
+          console.log("Creating 'generated-images' bucket");
+          const { error: createError } = await supabase.storage.createBucket('generated-images', {
+            public: true,
+          });
+          
+          if (createError) {
+            console.error("Error creating bucket:", createError);
+          } else {
+            console.log("Bucket created successfully");
+          }
+        }
+        
+        // Now fetch images
+        fetchImages();
+        
+      } catch (error) {
+        console.error("Error in bucket check:", error);
+        setLoading(false);
+      }
+    };
+    
+    checkAndCreateBucket();
   }, []);
   
   return (

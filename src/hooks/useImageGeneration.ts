@@ -37,6 +37,52 @@ export function useImageGeneration() {
       if (interval) clearInterval(interval);
     };
   }, [isGenerating]);
+
+  // Helper function to upload a base64 image to Supabase storage
+  const uploadImageToStorage = async (base64Image: string, fileName: string): Promise<string | null> => {
+    try {
+      console.log(`Uploading image to Supabase storage: ${fileName}`);
+      
+      // Convert base64 to blob
+      let imageData = base64Image;
+      if (base64Image.startsWith('data:')) {
+        imageData = base64Image.split(',')[1];
+      }
+      
+      const binaryImageData = atob(imageData);
+      const array = new Uint8Array(binaryImageData.length);
+      for (let i = 0; i < binaryImageData.length; i++) {
+        array[i] = binaryImageData.charCodeAt(i);
+      }
+      const blob = new Blob([array], { type: 'image/png' });
+      
+      // Upload to Supabase storage
+      const { data, error } = await supabase
+        .storage
+        .from('generated-images')
+        .upload(fileName, blob, {
+          contentType: 'image/png',
+          upsert: true
+        });
+        
+      if (error) {
+        console.error("Storage upload error:", error);
+        return null;
+      }
+      
+      // Get the public URL
+      const { data: publicUrlData } = supabase
+        .storage
+        .from('generated-images')
+        .getPublicUrl(fileName);
+        
+      console.log("Uploaded successfully, public URL:", publicUrlData.publicUrl);
+      return publicUrlData.publicUrl;
+    } catch (error) {
+      console.error("Error uploading to storage:", error);
+      return null;
+    }
+  };
   
   const handleMakeReal = async () => {
     if (!capturedImage) {
@@ -94,38 +140,17 @@ export function useImageGeneration() {
         setGeneratedPrompt(generatedPrompt);
       }
       
-      // Store the original and generated images in local storage for gallery access
+      // Store images in Supabase storage
       try {
-        // Store the reference to the generated image
         const timestamp = new Date().getTime();
-        const galleryEntry = {
-          id: `image-${timestamp}`,
-          original: capturedImage,
-          generated: generatedImageUrl,
-          prompt: generatedPrompt,
-          createdAt: new Date().toISOString()
-        };
+        const originalFileName = `original-${timestamp}.png`;
+        const generatedFileName = `generated-${timestamp}.png`;
         
-        // Get existing gallery items or initialize empty array
-        const existingGalleryJSON = localStorage.getItem('drawGallery');
-        const existingGallery = existingGalleryJSON ? JSON.parse(existingGalleryJSON) : [];
+        // Upload the original drawing
+        const originalImageUrl = await uploadImageToStorage(capturedImage, originalFileName);
         
-        // Add new item at the beginning of the array
-        existingGallery.unshift(galleryEntry);
-        
-        // Save updated gallery back to localStorage
-        localStorage.setItem('drawGallery', JSON.stringify(existingGallery));
-        
-        console.log("Saved image to gallery");
-      } catch (storageError) {
-        console.error("Error saving to gallery:", storageError);
-        // Non-critical error, continue with the flow
-      }
-      
-      // Fetch the generated image
-      try {
+        // Fetch and upload the generated image
         const response = await fetch(generatedImageUrl);
-        
         if (!response.ok) {
           throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
         }
@@ -133,20 +158,27 @@ export function useImageGeneration() {
         const blob = await response.blob();
         const base64data = await blobToBase64(blob);
         
-        console.log("Image successfully loaded as base64");
+        // Store the generated image in Supabase storage
+        const storedGeneratedImageUrl = await uploadImageToStorage(base64data, generatedFileName);
+        
+        console.log("Images stored in Supabase storage:", { 
+          originalImageUrl, 
+          storedGeneratedImageUrl 
+        });
+        
+        // Continue with the flow
         setGeneratedImage(base64data);
         setIsGenerating(false);
         navigate("/result");
         
-      } catch (fetchError) {
-        console.error("Error fetching generated image:", fetchError);
-        
-        // As a fallback, try to use the direct URL if we couldn't convert to base64
-        console.log("Attempting to use direct URL as fallback");
+      } catch (storageError) {
+        console.error("Error storing images in Supabase:", storageError);
+        // Non-critical error, continue with the flow using the direct URL
         setGeneratedImage(generatedImageUrl);
         setIsGenerating(false);
         navigate("/result");
       }
+      
     } catch (error) {
       console.error("Error generating image:", error);
       setGenerationError(error instanceof Error ? error.message : "Failed to generate image");
