@@ -54,12 +54,7 @@ export function useImageGeneration() {
     try {
       console.log("Starting image generation process");
       
-      // Convert captured image to blob
-      const imageBlob = await fetch(capturedImage).then(r => r.blob());
-      
-      // Convert to base64
-      const base64Image = await blobToBase64(imageBlob);
-      
+      // Pass the captured image directly to the makeReal function
       console.log("Calling makeReal function with the drawing data");
       
       const { data, error } = await supabase.functions.invoke<{
@@ -67,7 +62,7 @@ export function useImageGeneration() {
         prompt?: string;
         error?: string;
       }>('makeReal', {
-        body: { imageData: base64Image },
+        body: { imageData: capturedImage },
       });
       
       console.log("Edge function response received", { data, error });
@@ -92,10 +87,9 @@ export function useImageGeneration() {
       }
       
       console.log("Image generation successful, URL received:", generatedImageUrl.substring(0, 50) + "...");
-      console.log("Generated prompt:", generatedPrompt);
       
-      // Store the generated prompt if available
       if (generatedPrompt) {
+        console.log("Generated prompt:", generatedPrompt);
         setGeneratedPrompt(generatedPrompt);
       }
       

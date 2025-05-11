@@ -23,7 +23,7 @@ serve(async (req) => {
       );
     }
     
-    console.log("Received image data, calling OpenAI API");
+    console.log("Received image data, processing with OpenAI APIs");
     
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openaiApiKey) {
@@ -33,7 +33,59 @@ serve(async (req) => {
       );
     }
 
-    // Call OpenAI's image generation API (dall-e-3)
+    // Extract base64 data without prefix if it exists
+    let base64Image = imageBase64;
+    if (base64Image.startsWith('data:')) {
+      base64Image = base64Image.split(',')[1];
+    }
+    
+    // First use GPT-4V to analyze the drawing
+    console.log("Analyzing image with GPT-4o...");
+    const visionResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${openaiApiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: "You are a visual AI assistant helping a child turn their crayon drawing into a realistic image using AI. Look at the image carefully and describe it in a vivid, concrete sentence that includes: creature type, body parts, colours, pose, and background. Focus on what DALL·E 3 needs to recreate the drawing accurately. Respond with one detailed prompt only — no preamble or follow-up."
+          },
+          {
+            role: "user",
+            content: [
+              { type: "text", text: "Describe this drawing in detail to help DALL-E transform it into a realistic image:" },
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:image/jpeg;base64,${base64Image}`
+                }
+              }
+            ]
+          }
+        ],
+        max_tokens: 300
+      }),
+    });
+
+    if (!visionResponse.ok) {
+      const errorText = await visionResponse.text();
+      console.error("GPT-4V API error:", errorText);
+      return new Response(
+        JSON.stringify({ error: `GPT-4V API error: ${errorText}` }),
+        { status: 502, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
+    const visionData = await visionResponse.json();
+    const generatedPrompt = visionData.choices[0].message.content.trim();
+    console.log("Generated prompt:", generatedPrompt);
+
+    // Then use DALL-E with the analyzed prompt
+    console.log("Generating image with DALL-E using the analyzed prompt...");
     const openaiRes = await fetch("https://api.openai.com/v1/images/generations", {
       method: "POST",
       headers: {
@@ -42,7 +94,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: "dall-e-3",
-        prompt: "You are a visual AI assistant helping a child turn their crayon drawing into a realistic image using AI. Look at the image carefully and describe it in a vivid, concrete sentence that includes: creature type, body parts, colours, pose, and background. Focus on what DALL·E 3 needs to recreate the drawing accurately. Respond with one detailed prompt only — no preamble or follow-up.",
+        prompt: generatedPrompt,
         n: 1,
         size: "1024x1024",
         response_format: "url",
@@ -98,7 +150,7 @@ serve(async (req) => {
       // Since OpenAI API call was successful, we can return the direct URL instead of failing
       console.log("Returning direct OpenAI image URL instead of storing in Supabase");
       return new Response(
-        JSON.stringify({ imageUrl: openaiImageUrl }),
+        JSON.stringify({ imageUrl: openaiImageUrl, prompt: generatedPrompt }),
         { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
@@ -161,7 +213,7 @@ serve(async (req) => {
       // Since OpenAI API call was successful, we can return the direct URL instead of failing
       console.log("Returning direct OpenAI image URL due to storage upload failure");
       return new Response(
-        JSON.stringify({ imageUrl: openaiImageUrl }),
+        JSON.stringify({ imageUrl: openaiImageUrl, prompt: generatedPrompt }),
         { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
@@ -178,7 +230,7 @@ serve(async (req) => {
     console.log("Generated public URL:", imageUrl);
     
     return new Response(
-      JSON.stringify({ imageUrl }),
+      JSON.stringify({ imageUrl, prompt: generatedPrompt }),
       { 
         status: 200, 
         headers: { 
