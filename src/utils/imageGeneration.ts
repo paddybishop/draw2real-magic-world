@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 // Interface for the response from our Edge Function
 interface ImageGenerationResponse {
   imageUrl: string;
+  prompt?: string;
   error?: string;
 }
 

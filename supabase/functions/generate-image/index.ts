@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -39,8 +40,8 @@ serve(async (req) => {
       base64Image = base64Image.split(',')[1];
     }
     
-    // First use GPT-4V to analyze the drawing
-    console.log("Analyzing image with GPT-4o...");
+    // First use GPT-3.5-turbo to analyze the drawing
+    console.log("Analyzing image with GPT-3.5-turbo...");
     const visionResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -48,7 +49,7 @@ serve(async (req) => {
         "Authorization": `Bearer ${openaiApiKey}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "gpt-3.5-turbo",
         messages: [
           {
             role: "system",
@@ -73,9 +74,9 @@ serve(async (req) => {
 
     if (!visionResponse.ok) {
       const errorText = await visionResponse.text();
-      console.error("GPT-4V API error:", errorText);
+      console.error("GPT-3.5-turbo API error:", errorText);
       return new Response(
-        JSON.stringify({ error: `GPT-4V API error: ${errorText}` }),
+        JSON.stringify({ error: `GPT-3.5-turbo API error: ${errorText}` }),
         { status: 502, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }

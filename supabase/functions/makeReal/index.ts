@@ -38,8 +38,8 @@ serve(async (req) => {
     console.log("Calling OpenAI API to generate image and extract prompt...");
     
     try {
-      // Call OpenAI's GPT-4V first to analyze the image and create a detailed prompt
-      console.log("First step: Analyzing image with GPT-4o...");
+      // Call OpenAI's GPT-3.5-turbo first to analyze the image and create a detailed prompt
+      console.log("First step: Analyzing image with GPT-3.5-turbo...");
       
       // Remove data URL prefix if present to get just the base64 data
       let base64Image = imageData;
@@ -47,7 +47,7 @@ serve(async (req) => {
         base64Image = base64Image.split(',')[1];
       }
       
-      // Call GPT-4V to analyze the drawing
+      // Call GPT-3.5-turbo to analyze the drawing
       const visionResponse = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -55,7 +55,7 @@ serve(async (req) => {
           "Authorization": `Bearer ${openaiApiKey}`,
         },
         body: JSON.stringify({
-          model: "gpt-4o",
+          model: "gpt-3.5-turbo",
           messages: [
             {
               role: "system",
@@ -80,15 +80,15 @@ serve(async (req) => {
 
       if (!visionResponse.ok) {
         const errorText = await visionResponse.text();
-        console.error("GPT-4V API error:", errorText);
+        console.error("GPT-3.5-turbo API error:", errorText);
         return new Response(
-          JSON.stringify({ error: `GPT-4V API error: ${errorText}` }),
+          JSON.stringify({ error: `GPT-3.5-turbo API error: ${errorText}` }),
           { status: 502, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
         );
       }
 
       const visionData = await visionResponse.json();
-      console.log("GPT-4V analysis received");
+      console.log("GPT-3.5-turbo analysis received");
       
       const generatedPrompt = visionData.choices[0].message.content.trim();
       console.log("Generated prompt:", generatedPrompt);
