@@ -35,11 +35,11 @@ serve(async (req) => {
       apiVersion: "2023-10-16",
     });
 
-    // Set up product pricing based on the selected product
+    // Set up product pricing and Stripe price IDs
     const productData = {
       "remove-watermark": {
         name: "Remove Watermark",
-        amount: 299,  // $2.99
+        priceId: "price_1RNgp5JJYzvlRurUaUTzzQmL",
       },
       "framed-print": {
         name: "Framed Print",
@@ -52,22 +52,30 @@ serve(async (req) => {
     };
 
     const product = productData[productId] || productData["remove-watermark"];
+    
+    // Create checkout session with different approaches based on whether we have a priceId or amount
+    let lineItems;
+    if (product.priceId) {
+      // Use price ID directly when available (for remove-watermark)
+      lineItems = [{ price: product.priceId, quantity: 1 }];
+    } else {
+      // Use price_data for products without a price ID
+      lineItems = [{
+        price_data: {
+          currency: "usd",
+          product_data: {
+            name: product.name,
+          },
+          unit_amount: product.amount,
+        },
+        quantity: 1,
+      }];
+    }
 
     // Create a checkout session
     const session = await stripe.checkout.sessions.create({
       customer_email: user?.email,
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: product.name,
-            },
-            unit_amount: product.amount,
-          },
-          quantity: 1,
-        },
-      ],
+      line_items: lineItems,
       mode: "payment",
       success_url: `${req.headers.get("origin")}/payment-success?product=${productId}`,
       cancel_url: `${req.headers.get("origin")}/result`,
