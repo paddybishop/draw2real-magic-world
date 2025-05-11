@@ -142,3 +142,5 @@ verify_jwt = false
 verify_jwt = false
 [functions.create-checkout]
 verify_jwt = false
+[functions.uploadDrawing]
+verify_jwt = false

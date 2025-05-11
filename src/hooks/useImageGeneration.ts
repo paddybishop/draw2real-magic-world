@@ -56,17 +56,18 @@ export function useImageGeneration() {
     try {
       console.log("Starting image generation process");
       
-      // First, save the original drawing to storage
+      // First, save the original drawing to storage using the edge function
       const timestamp = new Date().getTime();
       const originalFileName = `original-${timestamp}.png`;
       
-      // Upload the original drawing first to make sure it's saved
+      // Upload the original drawing using the edge function
+      console.log("Uploading original drawing via edge function");
       const originalImageUrl = await uploadImageToStorage(capturedImage, originalFileName);
       
       if (!originalImageUrl) {
-        console.warn("Could not upload original drawing to storage, but will continue with generation");
+        console.warn("Could not upload original drawing, but will continue with generation");
       } else {
-        console.log("Original drawing saved to storage:", originalImageUrl);
+        console.log("Original drawing saved:", originalImageUrl);
       }
       
       // Pass the captured image to the makeReal function
@@ -121,10 +122,10 @@ export function useImageGeneration() {
         const blob = await response.blob();
         const base64data = await blobToBase64(blob);
         
-        // Store the generated image in Supabase storage
+        // Store the generated image using the edge function
         const storedGeneratedImageUrl = await uploadImageToStorage(base64data, generatedFileName);
         
-        console.log("Images stored in Supabase storage:", { 
+        console.log("Images stored:", { 
           originalImageUrl, 
           storedGeneratedImageUrl 
         });
@@ -135,7 +136,7 @@ export function useImageGeneration() {
         navigate("/result");
         
       } catch (storageError) {
-        console.error("Error storing images in Supabase:", storageError);
+        console.error("Error storing images:", storageError);
         // Non-critical error, continue with the flow using the direct URL
         setGeneratedImage(generatedImageUrl);
         setIsGenerating(false);

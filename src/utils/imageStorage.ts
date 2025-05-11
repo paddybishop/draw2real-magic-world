@@ -56,55 +56,41 @@ export const ensureStorageBucketExists = async (): Promise<void> => {
 };
 
 /**
- * Uploads a base64 image to Supabase storage
+ * Uploads a base64 image to Supabase storage using the edge function
  * @param base64Image - The base64-encoded image data
  * @param fileName - The name to give the file in storage
  * @returns The public URL of the uploaded image, or null if upload failed
  */
 export const uploadImageToStorage = async (base64Image: string, fileName: string): Promise<string | null> => {
   try {
-    console.log(`Uploading image to Supabase storage: ${fileName}`);
+    console.log(`Uploading image to Supabase edge function: ${fileName}`);
     
-    // Ensure the bucket exists before trying to upload
-    await ensureStorageBucketExists();
+    const { data, error } = await supabase.functions.invoke<{
+      success: boolean;
+      publicUrl?: string;
+      error?: string;
+    }>('uploadDrawing', {
+      body: { 
+        base64Image, 
+        fileName 
+      },
+    });
     
-    // Convert base64 to blob
-    let imageData = base64Image;
-    if (base64Image.startsWith('data:')) {
-      imageData = base64Image.split(',')[1];
-    }
-    
-    const binaryImageData = atob(imageData);
-    const array = new Uint8Array(binaryImageData.length);
-    for (let i = 0; i < binaryImageData.length; i++) {
-      array[i] = binaryImageData.charCodeAt(i);
-    }
-    const blob = new Blob([array], { type: 'image/png' });
-    
-    // Upload to Supabase storage with public access
-    const { data, error } = await supabase
-      .storage
-      .from('generated-images')
-      .upload(fileName, blob, {
-        contentType: 'image/png',
-        upsert: true
-      });
-      
     if (error) {
-      console.error("Storage upload error:", error);
+      console.error("Edge function error:", error);
       return null;
     }
     
-    // Get the public URL
-    const { data: publicUrlData } = supabase
-      .storage
-      .from('generated-images')
-      .getPublicUrl(fileName);
-      
-    console.log("Uploaded successfully, public URL:", publicUrlData.publicUrl);
-    return publicUrlData.publicUrl;
+    if (!data || !data.success || !data.publicUrl) {
+      console.error("Upload failed:", data?.error || "Unknown error");
+      return null;
+    }
+    
+    console.log("Upload successful, image URL:", data.publicUrl);
+    return data.publicUrl;
+    
   } catch (error) {
-    console.error("Error uploading to storage:", error);
+    console.error("Error uploading to storage via edge function:", error);
     return null;
   }
 };
