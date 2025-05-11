@@ -19,32 +19,32 @@ const GalleryImageCard: React.FC<GalleryImageCardProps> = ({
   return (
     <div className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all">
       <div className="flex">
-        {original ? (
-          <div className="w-1/2 aspect-square">
+        <div className="w-1/2 aspect-square">
+          {original ? (
             <img 
               src={original} 
               alt={`Original drawing ${index + 1}`} 
               className="w-full h-full object-cover"
             />
-          </div>
-        ) : (
-          <div className="w-1/2 aspect-square bg-gray-100 flex items-center justify-center text-gray-400">
-            <p className="text-sm">Original drawing</p>
-          </div>
-        )}
-        {generated ? (
-          <div className="w-1/2 aspect-square">
+          ) : (
+            <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400">
+              <p className="text-sm">Original drawing</p>
+            </div>
+          )}
+        </div>
+        <div className="w-1/2 aspect-square">
+          {generated ? (
             <img 
               src={generated} 
               alt={`Generated image ${index + 1}`} 
               className="w-full h-full object-cover"
             />
-          </div>
-        ) : (
-          <div className="w-1/2 aspect-square bg-gray-100 flex items-center justify-center text-gray-400">
-            <p className="text-sm">Generating...</p>
-          </div>
-        )}
+          ) : (
+            <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400">
+              <p className="text-sm">Generating...</p>
+            </div>
+          )}
+        </div>
       </div>
       <div className="p-3 flex justify-end">
         {generated && (
@@ -65,4 +65,3 @@ const GalleryImageCard: React.FC<GalleryImageCardProps> = ({
 };
 
 export default GalleryImageCard;
-

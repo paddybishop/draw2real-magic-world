@@ -59,6 +59,7 @@ export function useImageGeneration() {
       // First, save the original drawing to storage using the edge function
       const timestamp = new Date().getTime();
       const originalFileName = `original-${timestamp}.png`;
+      const generatedFileName = `generated-${timestamp}.png`;
       
       // Upload the original drawing using the edge function
       console.log("Uploading original drawing via edge function");
@@ -111,9 +112,8 @@ export function useImageGeneration() {
       
       // Now store the generated image
       try {
-        const generatedFileName = `generated-${timestamp}.png`;
-        
         // Fetch and upload the generated image
+        console.log("Fetching generated image from URL to upload to Supabase");
         const response = await fetch(generatedImageUrl);
         if (!response.ok) {
           throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
@@ -123,7 +123,7 @@ export function useImageGeneration() {
         const base64data = await blobToBase64(blob);
         
         // Store the generated image using the edge function
-        console.log("Uploading generated image via edge function");
+        console.log(`Uploading generated image via edge function with filename: ${generatedFileName}`);
         const storedGeneratedImageUrl = await uploadImageToStorage(base64data, generatedFileName);
         
         if (!storedGeneratedImageUrl) {

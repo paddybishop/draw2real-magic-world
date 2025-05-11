@@ -49,9 +49,9 @@ export const useGalleryImages = () => {
             return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
           });
         
-        // Find all generated images
+        // Find all generated images (match different possible patterns)
         const generatedImages = sortedImages.filter(item => 
-          item.name.startsWith('generated-') || 
+          item.name.startsWith('generated-') ||
           item.name.includes('generated-image-')
         );
         
@@ -66,14 +66,50 @@ export const useGalleryImages = () => {
         // Create pairs of original and generated images
         const imagePairs: GalleryImage[] = [];
         
-        // First, add all generated images
-        for (const genImage of generatedImages) {
-          // Create a public URL for the generated image
-          const { data: genPublicUrlData } = supabase
+        // First, try to create pairs based on timestamp
+        for (const origImage of originalImages) {
+          // Extract timestamp from filename (format: original-{timestamp}.png)
+          const timestamp = origImage.name.replace('original-', '').replace('.png', '');
+          
+          // Get public URL for original image
+          const { data: origPublicUrlData } = supabase
             .storage
             .from('generated-images')
-            .getPublicUrl(genImage.name);
+            .getPublicUrl(origImage.name);
             
+          // Look for matching generated image based on timestamp
+          const generatedImage = generatedImages.find(img => 
+            img.name === `generated-${timestamp}.png` ||
+            img.name === `generated-image-${timestamp}.png`
+          );
+          
+          let generatedUrl = "";
+          
+          if (generatedImage) {
+            // Get public URL for generated image
+            const { data: genPublicUrlData } = supabase
+              .storage
+              .from('generated-images')
+              .getPublicUrl(generatedImage.name);
+              
+            generatedUrl = genPublicUrlData.publicUrl;
+            
+            // Remove this image from generatedImages so we don't process it twice
+            generatedImages.splice(generatedImages.indexOf(generatedImage), 1);
+          }
+          
+          // Add to image pairs
+          imagePairs.push({
+            id: `image-${timestamp}`,
+            original: origPublicUrlData.publicUrl,
+            generated: generatedUrl,
+            createdAt: origImage.created_at,
+            prompt: ""
+          });
+        }
+        
+        // Add any remaining generated images that don't have a matching original
+        for (const genImage of generatedImages) {
           // Extract timestamp from filename
           let timestamp = "";
           if (genImage.name.startsWith('generated-')) {
@@ -84,59 +120,20 @@ export const useGalleryImages = () => {
             timestamp = genImage.name.replace('generated-image-', '').replace('.png', '');
           }
           
-          // Find matching original image
-          const originalImage = originalImages.find(img => 
-            img.name === `original-${timestamp}.png`
-          );
-          
-          let originalUrl = "";
-          
-          if (originalImage) {
-            // Get public URL for original image
-            const { data: origPublicUrlData } = supabase
-              .storage
-              .from('generated-images')
-              .getPublicUrl(originalImage.name);
-              
-            originalUrl = origPublicUrlData.publicUrl;
-          }
-          
-          // Add to image pairs
+          // Create a public URL for the generated image
+          const { data: genPublicUrlData } = supabase
+            .storage
+            .from('generated-images')
+            .getPublicUrl(genImage.name);
+            
+          // Add to image pairs (with empty original)
           imagePairs.push({
-            id: genImage.id || `image-${timestamp}`,
+            id: `image-${timestamp || genImage.id}`,
+            original: "", // No matching original
             generated: genPublicUrlData.publicUrl,
-            original: originalUrl,
             createdAt: genImage.created_at,
-            prompt: "" // We don't have prompt data stored yet
+            prompt: ""
           });
-        }
-        
-        // Then, check for any original images that don't have a generated counterpart yet
-        for (const origImage of originalImages) {
-          const timestamp = origImage.name.replace('original-', '').replace('.png', '');
-          
-          // Check if we already have this timestamp in our pairs
-          const alreadyAdded = imagePairs.some(pair => 
-            pair.id === `image-${timestamp}` || 
-            (pair.original && pair.original.includes(`original-${timestamp}`))
-          );
-          
-          if (!alreadyAdded) {
-            // Get public URL for original image
-            const { data: origPublicUrlData } = supabase
-              .storage
-              .from('generated-images')
-              .getPublicUrl(origImage.name);
-              
-            // Add as a standalone pair (with no generated image yet)
-            imagePairs.push({
-              id: `image-${timestamp}`,
-              original: origPublicUrlData.publicUrl,
-              generated: "", // No generated image yet
-              createdAt: origImage.created_at,
-              prompt: ""
-            });
-          }
         }
         
         // Sort final results by timestamp (most recent first)
@@ -160,4 +157,3 @@ export const useGalleryImages = () => {
   
   return { images, loading, fetchImages };
 };
-
