@@ -1,51 +1,116 @@
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import PrimaryButton from "@/components/PrimaryButton";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
+
+interface GalleryImage {
+  id: string;
+  original: string;
+  generated: string;
+  prompt?: string;
+  createdAt: string;
+}
 
 const Gallery: React.FC = () => {
   const navigate = useNavigate();
+  const [images, setImages] = useState<GalleryImage[]>([]);
+  const [loading, setLoading] = useState(true);
   
-  // In a real app, this would come from a database or storage
-  const sampleImages = [
-    {
-      original: "https://images.unsplash.com/photo-1582562124811-c09040d0a901",
-      generated: "https://images.unsplash.com/photo-1472491235688-bdc81a63246e"
-    },
-    {
-      original: "https://images.unsplash.com/photo-1500673922987-e212871fec22",
-      generated: "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07"
-    },
-    {
-      original: "https://images.unsplash.com/photo-1470813740244-df37b8c1edcb",
-      generated: "https://images.unsplash.com/photo-1582562124811-c09040d0a901"
-    }
-  ];
+  useEffect(() => {
+    const fetchImages = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch images from the generated-images bucket
+        const { data: imageData, error } = await supabase
+          .storage
+          .from('generated-images')
+          .list();
+          
+        if (error) {
+          throw error;
+        }
+        
+        // Process the image data to create gallery items
+        if (imageData && imageData.length > 0) {
+          // Sort by creation time (most recent first)
+          const sortedImages = imageData
+            .filter(item => !item.name.startsWith('.'))
+            .sort((a, b) => {
+              return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+            })
+            .map((item, index) => {
+              // Get the public URL for each image
+              const { data: publicUrlData } = supabase
+                .storage
+                .from('generated-images')
+                .getPublicUrl(item.name);
+                
+              return {
+                id: item.id || `image-${index}`,
+                generated: publicUrlData.publicUrl,
+                original: "", // We'll add this in the future when we store original drawings
+                createdAt: item.created_at,
+                prompt: "" // We'll add this in the future when we store prompts
+              };
+            });
+            
+          setImages(sortedImages);
+        }
+      } catch (error) {
+        console.error("Error fetching images:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load gallery images",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchImages();
+  }, []);
   
   return (
     <Layout title="Gallery" showBackButton>
       <div className="w-full max-w-md flex flex-col items-center justify-center gap-4">
-        {sampleImages.length === 0 ? (
+        {loading && (
+          <div className="text-center p-8">
+            <div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-gray-500">Loading your creations...</p>
+          </div>
+        )}
+        
+        {!loading && images.length === 0 ? (
           <div className="text-center p-8">
             <h3 className="text-xl font-bold mb-2">No images yet!</h3>
             <p className="text-gray-500 mb-4">Your gallery is empty. Take photos of your drawings to see them here.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-6 w-full">
-            {sampleImages.map((item, index) => (
+            {images.map((item, index) => (
               <div 
-                key={index} 
+                key={item.id} 
                 className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all"
               >
                 <div className="flex">
-                  <div className="w-1/2 aspect-square">
-                    <img 
-                      src={item.original} 
-                      alt={`Original drawing ${index + 1}`} 
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
+                  {item.original ? (
+                    <div className="w-1/2 aspect-square">
+                      <img 
+                        src={item.original} 
+                        alt={`Original drawing ${index + 1}`} 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-1/2 aspect-square bg-gray-100 flex items-center justify-center text-gray-400">
+                      <p className="text-sm">Original drawing</p>
+                    </div>
+                  )}
                   <div className="w-1/2 aspect-square">
                     <img 
                       src={item.generated} 

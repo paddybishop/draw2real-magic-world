@@ -94,6 +94,34 @@ export function useImageGeneration() {
         setGeneratedPrompt(generatedPrompt);
       }
       
+      // Store the original and generated images in local storage for gallery access
+      try {
+        // Store the reference to the generated image
+        const timestamp = new Date().getTime();
+        const galleryEntry = {
+          id: `image-${timestamp}`,
+          original: capturedImage,
+          generated: generatedImageUrl,
+          prompt: generatedPrompt,
+          createdAt: new Date().toISOString()
+        };
+        
+        // Get existing gallery items or initialize empty array
+        const existingGalleryJSON = localStorage.getItem('drawGallery');
+        const existingGallery = existingGalleryJSON ? JSON.parse(existingGalleryJSON) : [];
+        
+        // Add new item at the beginning of the array
+        existingGallery.unshift(galleryEntry);
+        
+        // Save updated gallery back to localStorage
+        localStorage.setItem('drawGallery', JSON.stringify(existingGallery));
+        
+        console.log("Saved image to gallery");
+      } catch (storageError) {
+        console.error("Error saving to gallery:", storageError);
+        // Non-critical error, continue with the flow
+      }
+      
       // Fetch the generated image
       try {
         const response = await fetch(generatedImageUrl);
