@@ -56,7 +56,30 @@ export function useImageGeneration() {
       }
       const blob = new Blob([array], { type: 'image/png' });
       
-      // Upload to Supabase storage
+      // Check if bucket exists and create it if it doesn't
+      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+      
+      if (bucketsError) {
+        console.error("Error checking buckets:", bucketsError);
+      } else {
+        const bucketExists = buckets.some(bucket => bucket.name === 'generated-images');
+        
+        if (!bucketExists) {
+          console.log("Creating 'generated-images' bucket");
+          const { error: createError } = await supabase.storage.createBucket('generated-images', {
+            public: true
+          });
+          
+          if (createError) {
+            console.error("Error creating bucket:", createError);
+            // Continue anyway, as the bucket might exist but not be visible
+          } else {
+            console.log("Bucket created successfully");
+          }
+        }
+      }
+
+      // Upload to Supabase storage with public access
       const { data, error } = await supabase
         .storage
         .from('generated-images')
@@ -101,7 +124,20 @@ export function useImageGeneration() {
     try {
       console.log("Starting image generation process");
       
-      // Pass the captured image directly to the makeReal function
+      // First, save the original drawing to storage
+      const timestamp = new Date().getTime();
+      const originalFileName = `original-${timestamp}.png`;
+      
+      // Upload the original drawing first to make sure it's saved
+      const originalImageUrl = await uploadImageToStorage(capturedImage, originalFileName);
+      
+      if (!originalImageUrl) {
+        console.warn("Could not upload original drawing to storage, but will continue with generation");
+      } else {
+        console.log("Original drawing saved to storage:", originalImageUrl);
+      }
+      
+      // Pass the captured image to the makeReal function
       console.log("Calling makeReal function with the drawing data");
       
       const { data, error } = await supabase.functions.invoke<{
@@ -140,14 +176,9 @@ export function useImageGeneration() {
         setGeneratedPrompt(generatedPrompt);
       }
       
-      // Store images in Supabase storage
+      // Now store the generated image
       try {
-        const timestamp = new Date().getTime();
-        const originalFileName = `original-${timestamp}.png`;
         const generatedFileName = `generated-${timestamp}.png`;
-        
-        // Upload the original drawing
-        const originalImageUrl = await uploadImageToStorage(capturedImage, originalFileName);
         
         // Fetch and upload the generated image
         const response = await fetch(generatedImageUrl);

@@ -5,6 +5,7 @@ import PrimaryButton from "@/components/PrimaryButton";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import { Download } from "lucide-react";
 
 interface GalleryImage {
   id: string;
@@ -24,6 +25,9 @@ const Gallery: React.FC = () => {
       try {
         setLoading(true);
         
+        // Ensure the bucket exists - we do this first
+        await ensureBucketExists();
+        
         // Fetch images from the generated-images bucket
         const { data: imageData, error } = await supabase
           .storage
@@ -31,8 +35,11 @@ const Gallery: React.FC = () => {
           .list();
           
         if (error) {
+          console.error("Error listing images:", error);
           throw error;
         }
+        
+        console.log("Image data from storage:", imageData);
         
         // Process the image data to create gallery items
         if (imageData && imageData.length > 0) {
@@ -46,6 +53,9 @@ const Gallery: React.FC = () => {
           // Group files by timestamp to match originals with generated images
           const generatedImages = sortedImages.filter(item => item.name.startsWith('generated-'));
           const originalImages = sortedImages.filter(item => item.name.startsWith('original-'));
+          
+          console.log("Found generated images:", generatedImages.length);
+          console.log("Found original images:", originalImages.length);
           
           // Create pairs of original and generated images
           const imagePairs: GalleryImage[] = [];
@@ -98,42 +108,77 @@ const Gallery: React.FC = () => {
       }
     };
     
-    // Check if the storage bucket exists, and create it if it doesn't
-    const checkAndCreateBucket = async () => {
-      try {
-        const { data: buckets, error } = await supabase.storage.listBuckets();
-        
-        if (error) {
-          console.error("Error checking buckets:", error);
-          return;
-        }
-        
-        const bucketExists = buckets.some(bucket => bucket.name === 'generated-images');
-        
-        if (!bucketExists) {
-          console.log("Creating 'generated-images' bucket");
-          const { error: createError } = await supabase.storage.createBucket('generated-images', {
-            public: true,
-          });
-          
-          if (createError) {
-            console.error("Error creating bucket:", createError);
-          } else {
-            console.log("Bucket created successfully");
-          }
-        }
-        
-        // Now fetch images
-        fetchImages();
-        
-      } catch (error) {
-        console.error("Error in bucket check:", error);
-        setLoading(false);
-      }
-    };
-    
-    checkAndCreateBucket();
+    fetchImages();
   }, []);
+  
+  // Helper function to ensure the storage bucket exists
+  const ensureBucketExists = async () => {
+    try {
+      console.log("Checking if generated-images bucket exists");
+      
+      // First, check if the bucket already exists by trying to list it
+      const { error: listError } = await supabase
+        .storage
+        .from('generated-images')
+        .list('', { limit: 1 });
+        
+      // If we can list files, the bucket exists and we're done
+      if (!listError) {
+        console.log("Bucket already exists");
+        return;
+      }
+      
+      // If there's an error other than "Not Found", log it but continue
+      if (listError.message !== "The resource was not found") {
+        console.error("Unexpected error checking bucket:", listError);
+      }
+      
+      // Try to create the bucket
+      console.log("Creating generated-images bucket");
+      const { error: createError } = await supabase
+        .storage
+        .createBucket('generated-images', {
+          public: true,
+        });
+        
+      if (createError) {
+        console.error("Error creating bucket:", createError);
+        if (createError.message.includes("row-level security policy")) {
+          // This is likely an RLS issue, but the bucket might already exist
+          console.log("RLS policy error, but the bucket might exist already");
+        } else {
+          throw createError;
+        }
+      } else {
+        console.log("Bucket created successfully");
+      }
+    } catch (error) {
+      console.error("Error ensuring bucket exists:", error);
+    }
+  };
+  
+  const downloadImage = async (imageUrl: string, filename: string) => {
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      
+      // Create a download link and trigger it
+      const downloadLink = document.createElement('a');
+      downloadLink.href = URL.createObjectURL(blob);
+      downloadLink.download = filename;
+      downloadLink.click();
+      
+      // Clean up
+      URL.revokeObjectURL(downloadLink.href);
+    } catch (error) {
+      console.error("Error downloading image:", error);
+      toast({
+        title: "Download Failed",
+        description: "Could not download the image",
+        variant: "destructive"
+      });
+    }
+  };
   
   return (
     <Layout title="Gallery" showBackButton>
@@ -183,14 +228,11 @@ const Gallery: React.FC = () => {
                   <PrimaryButton
                     color={index % 2 === 0 ? "turquoise" : "pink"}
                     size="small"
+                    onClick={() => downloadImage(item.generated, `generated-drawing-${index + 1}.png`)}
                   >
                     <div className="flex items-center justify-center gap-1">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-                        <polyline points="16 6 12 2 8 6"/>
-                        <line x1="12" y1="2" x2="12" y2="15"/>
-                      </svg>
-                      Share
+                      <Download size={16} />
+                      Download
                     </div>
                   </PrimaryButton>
                 </div>
