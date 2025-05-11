@@ -6,6 +6,7 @@ import PrimaryButton from "@/components/PrimaryButton";
 import Confetti from "@/components/Confetti";
 import { useDrawContext } from "@/context/DrawContext";
 import { toast } from "@/components/ui/use-toast";
+import { Share2 } from "lucide-react";
 
 const ResultScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -32,12 +33,121 @@ const ResultScreen: React.FC = () => {
     navigate("/camera");
   };
   
-  const handleShare = (mode: 'single' | 'sideBySide') => {
-    // In a real app, this would implement sharing functionality
-    toast({
-      title: "Sharing " + (mode === 'single' ? 'image' : 'comparison'),
-      description: "This feature would share your " + (mode === 'single' ? 'image' : 'side by side comparison') + " to social media or via messaging.",
-    });
+  const handleShare = async (mode: 'single' | 'sideBySide') => {
+    try {
+      // Create a canvas to combine images if in sideBySide mode
+      if (mode === 'sideBySide' && capturedImage && generatedImage) {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Load the original drawing
+        const drawingImg = new Image();
+        const promise1 = new Promise<void>((resolve) => {
+          drawingImg.onload = () => resolve();
+          drawingImg.src = capturedImage;
+        });
+        
+        // Load the generated image
+        const generatedImg = new Image();
+        const promise2 = new Promise<void>((resolve) => {
+          generatedImg.onload = () => resolve();
+          generatedImg.src = generatedImage;
+        });
+        
+        // Wait for both images to load
+        await Promise.all([promise1, promise2]);
+        
+        // Set canvas dimensions to fit both images side by side
+        canvas.width = drawingImg.width + generatedImg.width;
+        canvas.height = Math.max(drawingImg.height, generatedImg.height);
+        
+        // Draw both images on the canvas
+        ctx?.drawImage(drawingImg, 0, 0);
+        ctx?.drawImage(generatedImg, drawingImg.width, 0);
+        
+        // Convert canvas to a data URL
+        const dataUrl = canvas.toDataURL('image/png');
+        
+        // Share the combined image
+        if (navigator.share) {
+          const blob = await (await fetch(dataUrl)).blob();
+          const file = new File([blob], 'draw2real.png', { type: 'image/png' });
+          
+          await navigator.share({
+            title: 'My Drawing Made Real',
+            text: 'Check out my drawing transformed with Draw2Real!',
+            files: [file]
+          });
+          
+          toast({
+            title: "Shared successfully",
+            description: "Your side-by-side comparison has been shared.",
+          });
+        } else {
+          // Fallback for browsers that don't support the Web Share API with files
+          downloadImage(dataUrl, 'draw2real-comparison.png');
+          
+          toast({
+            title: "Downloaded Comparison",
+            description: "Your browser doesn't support sharing files. The image has been downloaded instead.",
+          });
+        }
+      } else if (generatedImage) {
+        // Share only the generated image
+        if (navigator.share) {
+          try {
+            // Try to share with files if supported
+            const blob = await (await fetch(generatedImage)).blob();
+            const file = new File([blob], 'draw2real.png', { type: 'image/png' });
+            
+            await navigator.share({
+              title: 'My Drawing Made Real',
+              text: 'Check out my drawing transformed with Draw2Real!',
+              files: [file]
+            });
+          } catch (fileError) {
+            // Fallback to sharing URL only (for browsers that support share but not file sharing)
+            console.log("File sharing not supported, falling back to URL sharing");
+            
+            await navigator.share({
+              title: 'My Drawing Made Real',
+              text: 'Check out my drawing transformed with Draw2Real!',
+              url: window.location.href
+            });
+          }
+          
+          toast({
+            title: "Shared successfully",
+            description: "Your image has been shared.",
+          });
+        } else {
+          // Fallback for browsers that don't support the Web Share API
+          downloadImage(generatedImage, 'draw2real.png');
+          
+          toast({
+            title: "Downloaded Image",
+            description: "Your browser doesn't support sharing. The image has been downloaded instead.",
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error sharing:', error);
+      toast({
+        title: "Sharing Failed",
+        description: "There was an error sharing your image. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  // Helper function to download an image
+  const downloadImage = (dataUrl: string, filename: string) => {
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
   
   const handleMoreOptions = () => {
@@ -114,11 +224,7 @@ const ResultScreen: React.FC = () => {
               onClick={() => handleShare(compareMode ? 'sideBySide' : 'single')}
             >
               <div className="flex items-center justify-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-                  <polyline points="16 6 12 2 8 6"/>
-                  <line x1="12" y1="2" x2="12" y2="15"/>
-                </svg>
+                <Share2 size={20} />
                 Share
               </div>
             </PrimaryButton>
@@ -133,7 +239,7 @@ const ResultScreen: React.FC = () => {
             </PrimaryButton>
             
             <PrimaryButton
-              color={showPrompt ? "purple" : "purple"}
+              color="purple"
               onClick={togglePrompt}
             >
               {showPrompt ? "Hide Prompt" : "Show Prompt"}
