@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -43,7 +42,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: "dall-e-3",
-        prompt: "Transform this drawing into a realistic, detailed image. Keep the general concept, layout and colors from the original drawing, but make it look photorealistic.",
+        prompt: "You are a visual AI assistant helping a child turn their crayon drawing into a realistic image using AI. Look at the image carefully and describe it in a vivid, concrete sentence that includes: creature type, body parts, colours, pose, and background. Focus on what DALL·E 3 needs to recreate the drawing accurately. Respond with one detailed prompt only — no preamble or follow-up.",
         n: 1,
         size: "1024x1024",
         response_format: "url",
