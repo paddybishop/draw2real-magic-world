@@ -5,6 +5,7 @@ import Layout from "@/components/Layout";
 import PrimaryButton from "@/components/PrimaryButton";
 import { useDrawContext } from "@/context/DrawContext";
 import Confetti from "@/components/Confetti";
+import { toast } from "sonner";
 
 const PaymentSuccessScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -16,6 +17,9 @@ const PaymentSuccessScreen: React.FC = () => {
     // Process the successful payment based on the product
     if (product === "remove-watermark") {
       setIsWatermarkRemoved(true);
+      toast.success("Watermark successfully removed!");
+    } else if (product) {
+      toast.success(`Thank you for your ${product} purchase!`);
     }
   }, [product, setIsWatermarkRemoved]);
   
@@ -41,9 +45,13 @@ const PaymentSuccessScreen: React.FC = () => {
             <p className="text-gray-600 mb-4">
               Your image has been updated and the watermark has been removed.
             </p>
+          ) : product === "framed-print" ? (
+            <p className="text-gray-600 mb-4">
+              Thank you for ordering a framed print! We'll process your order and contact you with shipping details soon.
+            </p>
           ) : (
             <p className="text-gray-600 mb-4">
-              Thank you for your purchase. Your payment has been processed successfully.
+              Thank you for your purchase! Your payment has been processed successfully.
             </p>
           )}
           

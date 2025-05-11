@@ -40,6 +40,14 @@ serve(async (req) => {
       "remove-watermark": {
         name: "Remove Watermark",
         amount: 299,  // $2.99
+      },
+      "framed-print": {
+        name: "Framed Print",
+        amount: 1999, // $19.99
+      },
+      "stuffed-toy": {
+        name: "Stuffed Toy",
+        amount: 3999, // $39.99
       }
     };
 
@@ -70,6 +78,7 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error) {
+    console.error("Checkout error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
