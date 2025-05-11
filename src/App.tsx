@@ -12,6 +12,7 @@ import PreviewScreen from "./pages/PreviewScreen";
 import MakeRealScreen from "./pages/MakeRealScreen";
 import ResultScreen from "./pages/ResultScreen";
 import PremiumScreen from "./pages/PremiumScreen";
+import PaymentSuccessScreen from "./pages/PaymentSuccessScreen";
 import HowItWorks from "./pages/HowItWorks";
 import Gallery from "./pages/Gallery";
 import NotFound from "./pages/NotFound";
@@ -32,6 +33,7 @@ const App = () => (
             <Route path="/make-real" element={<MakeRealScreen />} />
             <Route path="/result" element={<ResultScreen />} />
             <Route path="/premium" element={<PremiumScreen />} />
+            <Route path="/payment-success" element={<PaymentSuccessScreen />} />
             <Route path="/how-it-works" element={<HowItWorks />} />
             <Route path="/gallery" element={<Gallery />} />
             <Route path="*" element={<NotFound />} />

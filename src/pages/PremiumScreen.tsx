@@ -7,12 +7,14 @@ import SquigglyHeading from "@/components/SquigglyHeading";
 import { useDrawContext } from "@/context/DrawContext";
 import { toast } from "@/components/ui/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
 
 const PremiumScreen: React.FC = () => {
   const navigate = useNavigate();
   const { generatedImage } = useDrawContext();
   const [selectedFeature, setSelectedFeature] = React.useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(false);
   
   const premiumFeatures = [
     {
@@ -21,7 +23,8 @@ const PremiumScreen: React.FC = () => {
       description: "Get clean images without our logo",
       color: "bg-draw-pink",
       price: "$2.99",
-      status: "available"
+      status: "available",
+      productId: "remove-watermark"
     },
     {
       emoji: "🖼️",
@@ -29,7 +32,8 @@ const PremiumScreen: React.FC = () => {
       description: "Get a beautiful framed print delivered",
       color: "bg-draw-turquoise",
       price: "$19.99",
-      status: "available"
+      status: "available",
+      productId: "framed-print"
     },
     {
       emoji: "🧸",
@@ -37,11 +41,12 @@ const PremiumScreen: React.FC = () => {
       description: "Have your drawing made into a stuffed toy",
       color: "bg-draw-purple",
       price: "$39.99",
-      status: "coming-soon"
+      status: "coming-soon",
+      productId: "stuffed-toy"
     }
   ];
   
-  const handlePremiumFeature = (feature: string, status: string) => {
+  const handlePremiumFeature = (feature: string, status: string, productId: string) => {
     if (status === "coming-soon") {
       toast({
         title: "Coming Soon!",
@@ -54,27 +59,41 @@ const PremiumScreen: React.FC = () => {
     setDialogOpen(true);
   };
   
-  const handlePayment = () => {
-    setDialogOpen(false);
+  const handlePayment = async () => {
+    setIsLoading(true);
     
-    // In a real implementation, this would call a Supabase edge function to create a Stripe checkout session
-    toast({
-      title: "Redirecting to Payment",
-      description: `You'll be redirected to our secure payment processor.`,
-    });
-    
-    // Simulate redirect to payment
-    setTimeout(() => {
-      // This would be replaced with an actual redirect to Stripe
-      toast({
-        title: "Payment Successful",
-        description: `Your ${selectedFeature} has been activated!`,
+    try {
+      const selectedProduct = premiumFeatures.find(f => f.title === selectedFeature);
+      
+      if (!selectedProduct) {
+        throw new Error("Selected product not found");
+      }
+      
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { productId: selectedProduct.productId },
       });
       
-      if (selectedFeature === "Remove Watermark") {
-        navigate("/result");
+      if (error) {
+        throw error;
       }
-    }, 2000);
+      
+      // Redirect to Stripe checkout
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error("No checkout URL received");
+      }
+    } catch (error) {
+      console.error("Payment error:", error);
+      toast({
+        title: "Payment Error",
+        description: "There was a problem processing your payment. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+      setDialogOpen(false);
+    }
   };
   
   const handleBackToShare = () => {
@@ -108,7 +127,7 @@ const PremiumScreen: React.FC = () => {
                   <PrimaryButton
                     color={index === 0 ? "pink" : index === 1 ? "turquoise" : "purple"}
                     size="small"
-                    onClick={() => handlePremiumFeature(feature.title, feature.status)}
+                    onClick={() => handlePremiumFeature(feature.title, feature.status, feature.productId)}
                   >
                     {feature.status === "coming-soon" ? "Soon" : feature.price}
                   </PrimaryButton>
@@ -180,6 +199,7 @@ const PremiumScreen: React.FC = () => {
               color="yellow"
               className="flex-1"
               onClick={() => setDialogOpen(false)}
+              disabled={isLoading}
             >
               Cancel
             </PrimaryButton>
@@ -187,13 +207,26 @@ const PremiumScreen: React.FC = () => {
               color="purple"
               className="flex-1"
               onClick={handlePayment}
+              disabled={isLoading}
             >
               <div className="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect width="20" height="14" x="2" y="5" rx="2" />
-                  <line x1="2" x2="22" y1="10" y2="10" />
-                </svg>
-                Proceed to Payment
+                {isLoading ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect width="20" height="14" x="2" y="5" rx="2" />
+                      <line x1="2" x2="22" y1="10" y2="10" />
+                    </svg>
+                    Proceed to Payment
+                  </>
+                )}
               </div>
             </PrimaryButton>
           </div>
