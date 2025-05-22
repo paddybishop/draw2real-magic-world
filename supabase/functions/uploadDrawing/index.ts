@@ -52,6 +52,8 @@ serve(async (req) => {
     
     // Generate a name if not provided
     const outputFileName = fileName || `drawing-${Date.now()}.png`;
+    // Use the bucket name from the request, default to generated-images if not provided
+    const targetBucket = bucketName || 'generated-images';
     
     // Extract base64 data without prefix if it exists
     let imageData = base64Image;
@@ -66,7 +68,7 @@ serve(async (req) => {
       array[i] = binaryImageData.charCodeAt(i);
     }
     
-    console.log(`Preparing to upload image to bucket '${bucketName}' as ${outputFileName}`);
+    console.log(`Uploading image to bucket '${targetBucket}' as ${outputFileName}`);
     
     try {
       // Check if bucket exists
@@ -77,21 +79,21 @@ serve(async (req) => {
       if (bucketListError) {
         console.error("Error listing buckets:", bucketListError);
       } else {
-        const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
+        const bucketExists = buckets?.some((bucket)=>bucket.name === targetBucket);
         
         if (!bucketExists) {
-          console.log(`Creating bucket '${bucketName}'`);
+          console.log(`Creating bucket '${targetBucket}'`);
           const { error: createError } = await supabase
             .storage
-            .createBucket(bucketName, { public: true });
+            .createBucket(targetBucket, { public: true });
           
           if (createError) {
             console.error("Error creating bucket:", createError);
           } else {
-            console.log(`Successfully created bucket '${bucketName}'`);
+            console.log(`Successfully created bucket '${targetBucket}'`);
           }
         } else {
-          console.log(`Bucket '${bucketName}' already exists`);
+          console.log(`Bucket '${targetBucket}' already exists`);
         }
       }
     } catch (bucketError) {
@@ -100,10 +102,10 @@ serve(async (req) => {
     }
     
     // Upload file to storage
-    console.log(`Attempting to upload to bucket '${bucketName}'`);
+    console.log(`Attempting to upload to bucket '${targetBucket}'`);
     const { data: uploadData, error: uploadError } = await supabase
       .storage
-      .from(bucketName)
+      .from(targetBucket)
       .upload(outputFileName, array, {
         contentType: 'image/png',
         upsert: true
@@ -120,11 +122,11 @@ serve(async (req) => {
     // Get public URL
     const { data: publicUrlData } = supabase
       .storage
-      .from(bucketName)
+      .from(targetBucket)
       .getPublicUrl(outputFileName);
     
     console.log("Upload successful:", {
-      bucket: bucketName,
+      bucket: targetBucket,
       fileName: outputFileName,
       publicUrl: publicUrlData.publicUrl
     });
@@ -134,7 +136,7 @@ serve(async (req) => {
         success: true, 
         fileName: outputFileName,
         publicUrl: publicUrlData.publicUrl,
-        bucket: bucketName
+        bucket: targetBucket
       }),
       { 
         status: 200, 
