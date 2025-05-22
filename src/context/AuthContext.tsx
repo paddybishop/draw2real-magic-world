@@ -33,10 +33,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signInWithGoogle = async () => {
     try {
+      // Get the current URL and determine if we're in development or production
+      const isDevelopment = window.location.hostname === 'localhost';
+      const redirectUrl = isDevelopment 
+        ? `${window.location.origin}/auth/callback`
+        : 'https://draw2real-magic-world.vercel.app/auth/callback';
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: redirectUrl,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent'
