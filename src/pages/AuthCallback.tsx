@@ -8,7 +8,16 @@ const AuthCallback = () => {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        const { error } = await supabase.auth.getSession();
+        // Get the hash fragment from the URL
+        const hash = window.location.hash.substring(1);
+        const params = new URLSearchParams(hash);
+        
+        // Set the session using the access token
+        const { error } = await supabase.auth.setSession({
+          access_token: params.get('access_token') || '',
+          refresh_token: params.get('refresh_token') || ''
+        });
+        
         if (error) throw error;
         
         // Redirect to the previous page or home
