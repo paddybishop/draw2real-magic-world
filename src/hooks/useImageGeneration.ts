@@ -137,16 +137,31 @@ export function useImageGeneration() {
         const storedGeneratedImageUrl = await uploadImageToStorage(base64data, generatedFileName);
         
         if (!storedGeneratedImageUrl) {
-          console.warn("Could not upload generated image to storage, using direct URL");
-          setGeneratedImage(generatedImageUrl);
-        } else {
-          console.log("Generated image stored successfully:", storedGeneratedImageUrl);
-          setGeneratedImage(storedGeneratedImageUrl);
+          console.error("Failed to store generated image in Supabase");
+          throw new Error("Failed to store generated image");
+        }
+        
+        console.log("Generated image stored successfully:", storedGeneratedImageUrl);
+        setGeneratedImage(storedGeneratedImageUrl);
+        
+        // Store the image metadata in the database
+        const { error: dbError } = await supabase
+          .from('generated_images')
+          .insert({
+            user_id: user.id,
+            original_image_url: originalImageUrl,
+            generated_image_url: storedGeneratedImageUrl,
+            prompt: generatedPrompt,
+            created_at: new Date().toISOString()
+          });
+          
+        if (dbError) {
+          console.error("Error storing image metadata:", dbError);
         }
         
         console.log("Images stored:", { 
           originalImageUrl, 
-          storedGeneratedImageUrl: storedGeneratedImageUrl || generatedImageUrl
+          storedGeneratedImageUrl
         });
         
         // Continue with the flow
@@ -155,10 +170,14 @@ export function useImageGeneration() {
         
       } catch (storageError) {
         console.error("Error storing generated image:", storageError);
-        // Non-critical error, continue with the flow using the direct URL
-        setGeneratedImage(generatedImageUrl);
+        setGenerationError(storageError instanceof Error ? storageError.message : "Failed to store generated image");
         setIsGenerating(false);
-        navigate("/result");
+        
+        toast({
+          title: "Storage Failed",
+          description: "The image was generated but couldn't be saved. Please try again.",
+          variant: "destructive"
+        });
       }
       
     } catch (error) {
