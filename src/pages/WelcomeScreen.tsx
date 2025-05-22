@@ -9,6 +9,10 @@ const WelcomeScreen: React.FC = () => {
   return (
     <Layout className="justify-center items-center text-center">
       <div className="w-full max-w-md flex flex-col items-center justify-center gap-6">
+        {/* Title */}
+        <h2 className="text-2xl font-extrabold text-draw-purple mb-2">
+          Make your Kids' Drawings Come Alive. Let their Imagination go Wild!
+        </h2>
         {/* App Logo */}
         <div className="animate-bounce-light mb-4">
           <div className="w-48 h-48 rounded-full bg-white flex items-center justify-center shadow-lg relative">
@@ -70,6 +74,12 @@ const WelcomeScreen: React.FC = () => {
             </div>
           </PrimaryButton>
         </div>
+      </div>
+      {/* Quote at the bottom */}
+      <div className="absolute bottom-8 w-full flex justify-center">
+        <blockquote className="italic text-lg text-gray-600 max-w-md bg-white/80 rounded-lg px-6 py-3 shadow-md">
+          “Toby has never wanted to draw so much in his life”
+        </blockquote>
       </div>
     </Layout>
   );
