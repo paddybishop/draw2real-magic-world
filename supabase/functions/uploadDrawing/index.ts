@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -14,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { base64Image, fileName } = await req.json();
+    const { base64Image, fileName, bucketName = 'generated-images' } = await req.json();
     
     if (!base64Image) {
       return new Response(
@@ -42,7 +41,6 @@ serve(async (req) => {
     
     // Generate a name if not provided
     const outputFileName = fileName || `drawing-${Date.now()}.png`;
-    const bucketName = 'generated-images';
     
     // Extract base64 data without prefix if it exists
     let imageData = base64Image;

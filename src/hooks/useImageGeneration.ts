@@ -73,7 +73,7 @@ export function useImageGeneration() {
       
       // Upload the original drawing using the edge function
       console.log("Uploading original drawing via edge function");
-      const originalImageUrl = await uploadImageToStorage(capturedImage, originalFileName);
+      const originalImageUrl = await uploadImageToStorage(capturedImage, originalFileName, true);
       
       if (!originalImageUrl) {
         console.warn("Could not upload original drawing, but will continue with generation");
