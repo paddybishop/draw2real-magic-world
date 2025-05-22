@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,7 +16,7 @@ serve(async (req) => {
   }
 
   try {
-    const { imageData, bucketName = 'generated-images' } = await req.json();
+    const { imageData } = await req.json();
     
     if (!imageData) {
       return new Response(JSON.stringify({
@@ -152,113 +151,8 @@ serve(async (req) => {
     const openaiImageUrl = data.data[0].url;
     console.log("Successfully generated OpenAI image URL:", openaiImageUrl);
 
-    // Download the image from OpenAI
-    console.log("Downloading image from OpenAI...");
-    const imageResponse = await fetch(openaiImageUrl);
-    if (!imageResponse.ok) {
-      console.error("Failed to download image from OpenAI:", imageResponse.status, imageResponse.statusText);
-      return new Response(JSON.stringify({
-        error: "Failed to download image from OpenAI"
-      }), {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders
-        }
-      });
-    }
-
-    // Get the image data as blob
-    const imageBlob = await imageResponse.blob();
-    const arrayBuffer = await imageBlob.arrayBuffer();
-    const imageBytes = new Uint8Array(arrayBuffer);
-
-    // Create a Supabase client with service role key
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      console.error("Supabase credentials missing");
-      // Since OpenAI API call was successful, we can return the direct URL instead of failing
-      console.log("Returning direct OpenAI image URL instead of storing in Supabase");
-      return new Response(JSON.stringify({
-        imageUrl: openaiImageUrl,
-        prompt: generatedPrompt
-      }), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders
-        }
-      });
-    }
-
-    // Create client with service role key for admin privileges
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Create a unique filename
-    const filename = `generated-image-${Date.now()}.png`;
-    console.log(`Uploading image to Supabase Storage bucket '${bucketName}' as ${filename}`);
-
-    try {
-      // Check if bucket exists and create if needed
-      const { data: buckets, error: bucketListError } = await supabase.storage.listBuckets();
-      if (bucketListError) {
-        console.error("Error listing buckets:", bucketListError);
-      } else {
-        const bucketExists = buckets?.some((bucket) => bucket.name === bucketName);
-        if (!bucketExists) {
-          console.log(`Bucket '${bucketName}' not found, attempting to create it`);
-          const { error: createError } = await supabase.storage.createBucket(bucketName, {
-            public: true,
-            fileSizeLimit: 5242880 // 5MB
-          });
-          if (createError) {
-            console.error("Error creating bucket:", createError);
-          } else {
-            console.log(`Successfully created bucket '${bucketName}'`);
-          }
-        } else {
-          console.log(`Bucket '${bucketName}' already exists`);
-        }
-      }
-    } catch (bucketError) {
-      console.error("Error managing bucket:", bucketError);
-      // Continue with upload attempt even if bucket check/creation fails
-    }
-
-    // Upload to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from(bucketName)
-      .upload(filename, imageBytes, {
-        contentType: 'image/png',
-        upsert: true
-      });
-
-    if (uploadError) {
-      console.error("Failed to upload image to storage:", uploadError);
-      // Since OpenAI API call was successful, we can return the direct URL instead of failing
-      console.log("Returning direct OpenAI image URL due to storage upload failure");
-      return new Response(JSON.stringify({
-        imageUrl: openaiImageUrl,
-        prompt: generatedPrompt
-      }), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders
-        }
-      });
-    }
-
-    console.log("Successfully uploaded image to Supabase Storage");
-    // Get the public URL
-    const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(filename);
-    const imageUrl = publicUrlData.publicUrl;
-    console.log("Generated public URL:", imageUrl);
-
     return new Response(JSON.stringify({
-      imageUrl,
+      openaiImageUrl: openaiImageUrl,
       prompt: generatedPrompt
     }), {
       status: 200,
