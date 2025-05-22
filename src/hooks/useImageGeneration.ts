@@ -89,7 +89,10 @@ export function useImageGeneration() {
         prompt?: string;
         error?: string;
       }>('makeReal', {
-        body: { imageData: capturedImage },
+        body: { 
+          imageData: capturedImage,
+          bucketName: 'generated-images'
+        },
       });
       
       console.log("Edge function response received", { data, error });
