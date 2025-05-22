@@ -140,7 +140,7 @@ export function useImageGeneration() {
         
         while (!storedGeneratedImageUrl && retryCount < maxRetries) {
           try {
-            storedGeneratedImageUrl = await uploadImageToStorage(base64data, generatedFileName);
+            storedGeneratedImageUrl = await uploadImageToStorage(base64data, generatedFileName, false);
             if (!storedGeneratedImageUrl) {
               retryCount++;
               if (retryCount < maxRetries) {
