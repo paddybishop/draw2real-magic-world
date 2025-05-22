@@ -19,8 +19,8 @@ const MakeRealScreen: React.FC = () => {
   const handleMakeRealWithAuth = async () => {
     if (!user) {
       try {
+        sessionStorage.setItem('returnTo', '/make-real');
         await signInWithGoogle();
-        handleMakeReal();
       } catch (error) {
         toast({
           title: "Authentication Failed",

@@ -16,6 +16,7 @@ import PaymentSuccessScreen from "./pages/PaymentSuccessScreen";
 import HowItWorks from "./pages/HowItWorks";
 import Gallery from "./pages/Gallery";
 import NotFound from "./pages/NotFound";
+import AuthCallback from "./pages/AuthCallback";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,7 @@ const App = () => (
               <Route path="/payment-success" element={<PaymentSuccessScreen />} />
               <Route path="/how-it-works" element={<HowItWorks />} />
               <Route path="/gallery" element={<Gallery />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
