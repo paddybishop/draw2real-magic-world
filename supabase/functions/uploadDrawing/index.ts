@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { base64Image, fileName, bucketName = 'generated-images' } = await req.json();
+    const { base64Image, fileName, bucketName } = await req.json();
     
     if (!base64Image) {
       return new Response(
@@ -21,8 +21,19 @@ serve(async (req) => {
         { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
+
+    if (!bucketName) {
+      return new Response(
+        JSON.stringify({ error: 'No bucket name provided' }),
+        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
     
-    console.log("Received image data for upload:", fileName || "unnamed-file.png");
+    console.log("Received image data for upload:", {
+      fileName: fileName || "unnamed-file.png",
+      bucketName,
+      imageDataLength: base64Image.length
+    });
     
     // Create a Supabase client with service role key (bypasses RLS)
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
@@ -55,7 +66,7 @@ serve(async (req) => {
       array[i] = binaryImageData.charCodeAt(i);
     }
     
-    console.log(`Uploading image to bucket '${bucketName}' as ${outputFileName}`);
+    console.log(`Preparing to upload image to bucket '${bucketName}' as ${outputFileName}`);
     
     try {
       // Check if bucket exists
@@ -79,6 +90,8 @@ serve(async (req) => {
           } else {
             console.log(`Successfully created bucket '${bucketName}'`);
           }
+        } else {
+          console.log(`Bucket '${bucketName}' already exists`);
         }
       }
     } catch (bucketError) {
@@ -87,6 +100,7 @@ serve(async (req) => {
     }
     
     // Upload file to storage
+    console.log(`Attempting to upload to bucket '${bucketName}'`);
     const { data: uploadData, error: uploadError } = await supabase
       .storage
       .from(bucketName)
@@ -109,13 +123,18 @@ serve(async (req) => {
       .from(bucketName)
       .getPublicUrl(outputFileName);
     
-    console.log("Upload successful, public URL generated:", publicUrlData.publicUrl);
+    console.log("Upload successful:", {
+      bucket: bucketName,
+      fileName: outputFileName,
+      publicUrl: publicUrlData.publicUrl
+    });
     
     return new Response(
       JSON.stringify({ 
         success: true, 
         fileName: outputFileName,
-        publicUrl: publicUrlData.publicUrl
+        publicUrl: publicUrlData.publicUrl,
+        bucket: bucketName
       }),
       { 
         status: 200, 
