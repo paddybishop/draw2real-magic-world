@@ -132,31 +132,66 @@ export function useImageGeneration() {
         const blob = await response.blob();
         const base64data = await blobToBase64(blob);
         
-        // Store the generated image using the edge function
+        // Store the generated image using the edge function with retry logic
         console.log(`Uploading generated image via edge function with filename: ${generatedFileName}`);
-        const storedGeneratedImageUrl = await uploadImageToStorage(base64data, generatedFileName);
+        let storedGeneratedImageUrl = null;
+        let retryCount = 0;
+        const maxRetries = 3;
+        
+        while (!storedGeneratedImageUrl && retryCount < maxRetries) {
+          try {
+            storedGeneratedImageUrl = await uploadImageToStorage(base64data, generatedFileName);
+            if (!storedGeneratedImageUrl) {
+              retryCount++;
+              if (retryCount < maxRetries) {
+                console.log(`Retry ${retryCount} of ${maxRetries} for image upload`);
+                await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)); // Exponential backoff
+              }
+            }
+          } catch (retryError) {
+            console.error(`Retry ${retryCount + 1} failed:`, retryError);
+            retryCount++;
+            if (retryCount < maxRetries) {
+              await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+            }
+          }
+        }
         
         if (!storedGeneratedImageUrl) {
-          console.error("Failed to store generated image in Supabase");
-          throw new Error("Failed to store generated image");
+          throw new Error("Failed to store generated image after multiple attempts");
         }
         
         console.log("Generated image stored successfully:", storedGeneratedImageUrl);
         setGeneratedImage(storedGeneratedImageUrl);
         
-        // Store the image metadata in the database
-        const { error: dbError } = await supabase
-          .from('generated_images')
-          .insert({
-            user_id: user.id,
-            original_image_url: originalImageUrl,
-            generated_image_url: storedGeneratedImageUrl,
-            prompt: generatedPrompt,
-            created_at: new Date().toISOString()
-          });
-          
+        // Store the image metadata in the database with retry logic
+        let dbError = null;
+        retryCount = 0;
+        
+        while (dbError && retryCount < maxRetries) {
+          const { error } = await supabase
+            .from('generated_images')
+            .insert({
+              user_id: user.id,
+              original_image_url: originalImageUrl,
+              generated_image_url: storedGeneratedImageUrl,
+              prompt: generatedPrompt,
+              created_at: new Date().toISOString()
+            });
+            
+          if (error) {
+            console.error(`Database insert attempt ${retryCount + 1} failed:`, error);
+            retryCount++;
+            if (retryCount < maxRetries) {
+              await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+            }
+          } else {
+            dbError = null;
+          }
+        }
+        
         if (dbError) {
-          console.error("Error storing image metadata:", dbError);
+          console.error("Failed to store image metadata after multiple attempts:", dbError);
         }
         
         console.log("Images stored:", { 
