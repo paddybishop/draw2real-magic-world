@@ -1,10 +1,10 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { DrawProvider } from "./context/DrawContext";
+import { AuthProvider } from "./context/AuthContext";
 
 import WelcomeScreen from "./pages/WelcomeScreen";
 import CameraScreen from "./pages/CameraScreen";
@@ -22,24 +22,26 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <DrawProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<WelcomeScreen />} />
-            <Route path="/camera" element={<CameraScreen />} />
-            <Route path="/preview" element={<PreviewScreen />} />
-            <Route path="/make-real" element={<MakeRealScreen />} />
-            <Route path="/result" element={<ResultScreen />} />
-            <Route path="/premium" element={<PremiumScreen />} />
-            <Route path="/payment-success" element={<PaymentSuccessScreen />} />
-            <Route path="/how-it-works" element={<HowItWorks />} />
-            <Route path="/gallery" element={<Gallery />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </DrawProvider>
+      <AuthProvider>
+        <DrawProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<WelcomeScreen />} />
+              <Route path="/camera" element={<CameraScreen />} />
+              <Route path="/preview" element={<PreviewScreen />} />
+              <Route path="/make-real" element={<MakeRealScreen />} />
+              <Route path="/result" element={<ResultScreen />} />
+              <Route path="/premium" element={<PremiumScreen />} />
+              <Route path="/payment-success" element={<PaymentSuccessScreen />} />
+              <Route path="/how-it-works" element={<HowItWorks />} />
+              <Route path="/gallery" element={<Gallery />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </DrawProvider>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

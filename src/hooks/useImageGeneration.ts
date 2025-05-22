@@ -1,13 +1,14 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDrawContext } from "@/context/DrawContext";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { uploadImageToStorage, blobToBase64 } from "@/utils/imageStorage";
+import { useAuth } from "@/context/AuthContext";
 
 export function useImageGeneration() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { 
     capturedImage, 
     setGeneratedImage, 
@@ -40,6 +41,15 @@ export function useImageGeneration() {
   }, [isGenerating]);
   
   const handleMakeReal = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to continue",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (!capturedImage) {
       toast({
         title: "No Image",
