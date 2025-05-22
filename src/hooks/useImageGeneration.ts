@@ -85,13 +85,12 @@ export function useImageGeneration() {
       console.log("Calling makeReal function with the drawing data");
       
       const { data, error } = await supabase.functions.invoke<{
-        imageUrl: string;
+        openaiImageUrl: string;
         prompt?: string;
         error?: string;
       }>('makeReal', {
         body: { 
           imageData: capturedImage,
-          bucketName: 'generated-images'
         },
       });
       
@@ -109,14 +108,14 @@ export function useImageGeneration() {
         throw new Error(data.error);
       }
       
-      const generatedImageUrl = data.imageUrl;
+      const generatedImageUrl = data.openaiImageUrl;
       const generatedPrompt = data.prompt;
       
       if (!generatedImageUrl) {
         throw new Error("No image URL returned from the server");
       }
       
-      console.log("Image generation successful, URL received:", generatedImageUrl.substring(0, 50) + "...");
+      console.log("Image generation successful, OpenAI URL received:", generatedImageUrl.substring(0, 50) + "...");
       
       if (generatedPrompt) {
         console.log("Generated prompt:", generatedPrompt);
@@ -135,8 +134,8 @@ export function useImageGeneration() {
         const blob = await response.blob();
         const base64data = await blobToBase64(blob);
         
-        // Store the generated image using the edge function with retry logic
-        console.log(`Uploading generated image via edge function with filename: ${generatedFileName}`);
+        // Store the generated image using the uploadDrawing edge function
+        console.log(`Uploading generated image via uploadDrawing edge function with filename: ${generatedFileName}`);
         let storedGeneratedImageUrl = null;
         let retryCount = 0;
         const maxRetries = 3;
