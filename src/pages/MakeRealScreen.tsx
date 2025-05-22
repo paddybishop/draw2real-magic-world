@@ -20,6 +20,7 @@ const MakeRealScreen: React.FC = () => {
     if (!user) {
       try {
         await signInWithGoogle();
+        handleMakeReal();
       } catch (error) {
         toast({
           title: "Authentication Failed",
