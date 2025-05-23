@@ -71,8 +71,8 @@ export function useImageGeneration() {
       const originalFileName = `original-${timestamp}.png`;
       const generatedFileName = `generated-${timestamp}.png`;
       
-      // Upload the original drawing using the edge function
-      console.log("Uploading original drawing via edge function");
+      // Upload the original drawing using the uploadDrawing edge function
+      console.log("Uploading original drawing via uploadDrawing edge function");
       const originalImageUrl = await uploadImageToStorage(capturedImage, originalFileName, true);
       
       if (!originalImageUrl) {
@@ -94,7 +94,9 @@ export function useImageGeneration() {
         },
       });
       
-      console.log("Edge function response received", { data, error });
+      console.log("Edge function response received:");
+      // Use console.dir for better object inspection in the browser console
+      console.dir({ data, error });
       
       if (error) {
         throw new Error(`Edge function error: ${error.message || 'Unknown error'}`);
@@ -108,8 +110,17 @@ export function useImageGeneration() {
         throw new Error(data.error);
       }
       
+      // Updated check to be more explicit
+      if (!data || !data.openaiImageUrl) {
+        console.error("Unexpected data structure from makeReal edge function:", data);
+        throw new Error("No valid image URL returned from the server");
+      }
+      
       const generatedImageUrl = data.openaiImageUrl;
       const generatedPrompt = data.prompt;
+      
+      // Log just before the problematic check
+      console.log("Value of generatedImageUrl before final check:", generatedImageUrl);
       
       if (!generatedImageUrl) {
         throw new Error("No image URL returned from the server");
@@ -134,7 +145,7 @@ export function useImageGeneration() {
         const blob = await response.blob();
         const base64data = await blobToBase64(blob);
         
-        // Store the generated image using the uploadDrawing edge function
+        // Store the generated image using the uploadDrawing edge function with retry logic
         console.log(`Uploading generated image via uploadDrawing edge function with filename: ${generatedFileName}`);
         let storedGeneratedImageUrl = null;
         let retryCount = 0;

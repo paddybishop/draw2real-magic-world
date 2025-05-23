@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ensureStorageBucketExists } from "@/utils/imageStorage";
+import { ensureStorageBucketsExist } from "@/utils/imageStorage";
 import { toast } from "@/components/ui/use-toast";
 
 export interface GalleryImage {
@@ -25,7 +24,7 @@ export const useGalleryImages = () => {
       setLoading(true);
       
       // Ensure the bucket exists
-      await ensureStorageBucketExists();
+      await ensureStorageBucketsExist();
       
       // Fetch images from the generated-images bucket
       const { data: imageData, error } = await supabase

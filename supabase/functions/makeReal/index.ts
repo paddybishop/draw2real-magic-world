@@ -151,8 +151,32 @@ serve(async (req) => {
     const openaiImageUrl = data.data[0].url;
     console.log("Successfully generated OpenAI image URL:", openaiImageUrl);
 
+    // **NEW:** Download the image from OpenAI within the edge function
+    console.log("Downloading image from OpenAI within edge function...");
+    const imageResponse = await fetch(openaiImageUrl);
+    
+    if (!imageResponse.ok) {
+      console.error("Failed to download image from OpenAI within edge function:", imageResponse.status, imageResponse.statusText);
+      return new Response(JSON.stringify({
+        error: "Failed to download image from OpenAI"
+      }), {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        }
+      });
+    }
+    
+    // Read the image data as ArrayBuffer and convert to base64
+    const imageArrayBuffer = await imageResponse.arrayBuffer();
+    const generatedImageBase64 = btoa(String.fromCharCode(...new Uint8Array(imageArrayBuffer)));
+    
+    console.log("Successfully downloaded and converted image to base64.");
+
+    // Return the base64 image data and prompt
     return new Response(JSON.stringify({
-      openaiImageUrl: openaiImageUrl,
+      generatedImageBase64: generatedImageBase64,
       prompt: generatedPrompt
     }), {
       status: 200,

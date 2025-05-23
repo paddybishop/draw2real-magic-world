@@ -74,6 +74,9 @@ export const uploadImageToStorage = async (
     const bucketName = isOriginalDrawing ? 'original-drawings' : 'generated-images';
     console.log(`Uploading image to ${bucketName} bucket via edge function: ${fileName}`);
     
+    // **TARGETED LOG:** What bucketName is calculated here?
+    console.log("Calculated bucketName in uploadImageToStorage:", bucketName);
+
     const { data, error } = await supabase.functions.invoke<{
       success: boolean;
       publicUrl?: string;
