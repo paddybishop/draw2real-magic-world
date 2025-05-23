@@ -136,7 +136,6 @@ export function useImageGeneration() {
         
         while (!storedGeneratedImageUrl && retryCount < maxRetries) {
           try {
-            // Use uploadImageToStorage with the base64 data received from makeReal
             storedGeneratedImageUrl = await uploadImageToStorage(generatedImageBase64, generatedFileName, false);
             if (!storedGeneratedImageUrl) {
               retryCount++;

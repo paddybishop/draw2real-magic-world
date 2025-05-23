@@ -23,60 +23,64 @@ export const useGalleryImages = () => {
     try {
       setLoading(true);
       
-      // Ensure the bucket exists
-      await ensureStorageBucketsExist();
-      
-      // Fetch images from the generated-images bucket
-      const { data: imageData, error } = await supabase
+      // Fetch images from both original-drawings and generated-images buckets
+      console.log("Fetching images from original-drawings bucket...");
+      const { data: originalImageData, error: originalError } = await supabase
+        .storage
+        .from('original-drawings')
+        .list();
+
+      if (originalError) {
+        console.error("Error listing original images:", originalError);
+        throw originalError;
+      }
+
+      console.log("Fetching images from generated-images bucket...");
+      const { data: generatedImageData, error: generatedError } = await supabase
         .storage
         .from('generated-images')
         .list();
-        
-      if (error) {
-        console.error("Error listing images:", error);
-        throw error;
+
+      if (generatedError) {
+        console.error("Error listing generated images:", generatedError);
+        throw generatedError;
       }
       
-      console.log("Image data from storage:", imageData);
+      // Combine and process image data
+      const allImageData = [...(originalImageData || []), ...(generatedImageData || [])];
       
-      // Process the image data to create gallery items
-      if (imageData && imageData.length > 0) {
-        // Sort by creation time (most recent first)
-        const sortedImages = imageData
+      console.log("Combined image data count:", allImageData.length);
+
+      // Process the combined image data to create gallery items
+      if (allImageData && allImageData.length > 0) {
+        // Sort by creation time (most recent first) - using combined data
+        const sortedImages = allImageData
           .filter(item => !item.name.startsWith('.'))
           .sort((a, b) => {
             return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
           });
         
-        // Find all generated images (match different possible patterns)
-        const generatedImages = sortedImages.filter(item => 
-          item.name.startsWith('generated-') ||
-          item.name.includes('generated-image-')
-        );
-        
-        // Find all original images
-        const originalImages = sortedImages.filter(item => 
-          item.name.startsWith('original-')
-        );
-        
-        console.log("Found generated images:", generatedImages.length);
-        console.log("Found original images:", originalImages.length);
-        
-        // Create pairs of original and generated images
+        // Separate into original and generated lists again, but from the combined sorted list
+        const originalImages = sortedImages.filter(item => item.name.startsWith('original-'));
+        const generatedImages = sortedImages.filter(item => item.name.startsWith('generated-') || item.name.includes('generated-image-'));
+
+        console.log("Found original images (after combining):", originalImages.length);
+        console.log("Found generated images (after combining):", generatedImages.length);
+
         const imagePairs: GalleryImage[] = [];
         
-        // First, try to create pairs based on timestamp
+        // First, try to create pairs based on timestamp from the original images list
         for (const origImage of originalImages) {
           // Extract timestamp from filename (format: original-{timestamp}.png)
           const timestamp = origImage.name.replace('original-', '').replace('.png', '');
           
-          // Get public URL for original image
+          // Get public URL for original image from the correct bucket
           const { data: origPublicUrlData } = supabase
             .storage
-            .from('generated-images')
+            .from('original-drawings') // <-- Get public URL from original-drawings
             .getPublicUrl(origImage.name);
             
-          // Look for matching generated image based on timestamp
+          // Look for matching generated image based on timestamp in the generated images list
           const generatedImage = generatedImages.find(img => 
             img.name === `generated-${timestamp}.png` ||
             img.name === `generated-image-${timestamp}.png`
@@ -85,16 +89,20 @@ export const useGalleryImages = () => {
           let generatedUrl = "";
           
           if (generatedImage) {
-            // Get public URL for generated image
+            // Get public URL for generated image from the correct bucket
             const { data: genPublicUrlData } = supabase
               .storage
-              .from('generated-images')
+              .from('generated-images') // <-- Get public URL from generated-images
               .getPublicUrl(generatedImage.name);
               
             generatedUrl = genPublicUrlData.publicUrl;
             
             // Remove this image from generatedImages so we don't process it twice
-            generatedImages.splice(generatedImages.indexOf(generatedImage), 1);
+            // Find index of generatedImage in the generatedImages array
+            const genIndex = generatedImages.findIndex(img => img.id === generatedImage.id);
+            if (genIndex > -1) {
+              generatedImages.splice(genIndex, 1);
+            }
           }
           
           // Add to image pairs
@@ -119,10 +127,10 @@ export const useGalleryImages = () => {
             timestamp = genImage.name.replace('generated-image-', '').replace('.png', '');
           }
           
-          // Create a public URL for the generated image
+          // Create a public URL for the generated image from its bucket
           const { data: genPublicUrlData } = supabase
             .storage
-            .from('generated-images')
+            .from('generated-images') // <-- Get public URL from generated-images
             .getPublicUrl(genImage.name);
             
           // Add to image pairs (with empty original)
@@ -141,7 +149,10 @@ export const useGalleryImages = () => {
         });
         
         setImages(imagePairs);
+      } else {
+         setImages([]); // Set empty if no images found in either bucket
       }
+
     } catch (error) {
       console.error("Error fetching images:", error);
       toast({
