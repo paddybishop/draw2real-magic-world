@@ -37,7 +37,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const isDevelopment = window.location.hostname === 'localhost';
       const redirectUrl = isDevelopment 
         ? `${window.location.origin}/auth/callback`
-        : 'https://draw2real-magic-world.vercel.app/auth/callback';
+        : 'https://draw2real-magic-world.lovable.app/auth/callback';
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
