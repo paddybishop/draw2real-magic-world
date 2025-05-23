@@ -85,7 +85,7 @@ export function useImageGeneration() {
       console.log("Calling makeReal function with the drawing data");
       
       const { data, error } = await supabase.functions.invoke<{
-        openaiImageUrl: string;
+        generatedImageBase64: string;
         prompt?: string;
         error?: string;
       }>('makeReal', {
@@ -95,7 +95,6 @@ export function useImageGeneration() {
       });
       
       console.log("Edge function response received:");
-      // Use console.dir for better object inspection in the browser console
       console.dir({ data, error });
       
       if (error) {
@@ -110,50 +109,35 @@ export function useImageGeneration() {
         throw new Error(data.error);
       }
       
-      // Updated check to be more explicit
-      if (!data || !data.openaiImageUrl) {
+      // Check for expected data in the response
+      if (!data || !data.generatedImageBase64) {
         console.error("Unexpected data structure from makeReal edge function:", data);
-        throw new Error("No valid image URL returned from the server");
+        throw new Error("No valid image data returned from the server");
       }
       
-      const generatedImageUrl = data.openaiImageUrl;
+      // Extract base64 data and prompt from the response
+      const generatedImageBase64 = data.generatedImageBase64;
       const generatedPrompt = data.prompt;
       
-      // Log just before the problematic check
-      console.log("Value of generatedImageUrl before final check:", generatedImageUrl);
-      
-      if (!generatedImageUrl) {
-        throw new Error("No image URL returned from the server");
-      }
-      
-      console.log("Image generation successful, OpenAI URL received:", generatedImageUrl.substring(0, 50) + "...");
+      console.log("Generated image data received from makeReal.");
       
       if (generatedPrompt) {
         console.log("Generated prompt:", generatedPrompt);
         setGeneratedPrompt(generatedPrompt);
       }
       
-      // Now store the generated image
+      // Now store the generated image base64 using uploadDrawing edge function
       try {
-        // Fetch and upload the generated image
-        console.log("Fetching generated image from URL to upload to Supabase");
-        const response = await fetch(generatedImageUrl);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
-        }
-        
-        const blob = await response.blob();
-        const base64data = await blobToBase64(blob);
-        
         // Store the generated image using the uploadDrawing edge function with retry logic
-        console.log(`Uploading generated image via uploadDrawing edge function with filename: ${generatedFileName}`);
+        console.log(`Uploading generated image base64 via uploadDrawing edge function with filename: ${generatedFileName}`);
         let storedGeneratedImageUrl = null;
         let retryCount = 0;
         const maxRetries = 3;
         
         while (!storedGeneratedImageUrl && retryCount < maxRetries) {
           try {
-            storedGeneratedImageUrl = await uploadImageToStorage(base64data, generatedFileName, false);
+            // Use uploadImageToStorage with the base64 data received from makeReal
+            storedGeneratedImageUrl = await uploadImageToStorage(generatedImageBase64, generatedFileName, false);
             if (!storedGeneratedImageUrl) {
               retryCount++;
               if (retryCount < maxRetries) {

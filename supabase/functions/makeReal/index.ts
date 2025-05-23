@@ -170,7 +170,15 @@ serve(async (req) => {
     
     // Read the image data as ArrayBuffer and convert to base64
     const imageArrayBuffer = await imageResponse.arrayBuffer();
-    const generatedImageBase64 = btoa(String.fromCharCode(...new Uint8Array(imageArrayBuffer)));
+    
+    // **FIX:** Replace call stack overflowing btoa conversion
+    // const generatedImageBase64 = btoa(String.fromCharCode(...new Uint8Array(imageArrayBuffer)));
+    const bytes = new Uint8Array(imageArrayBuffer);
+    let binaryString = "";
+    for (let i = 0; i < bytes.length; i++) {
+        binaryString += String.fromCharCode(bytes[i]);
+    }
+    const generatedImageBase64 = btoa(binaryString);
     
     console.log("Successfully downloaded and converted image to base64.");
 
