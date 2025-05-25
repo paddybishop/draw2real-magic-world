@@ -11,29 +11,30 @@ export type Database = {
     Tables: {
       generated_images: {
         Row: {
-          id: string
-          user_id: string
-          original_image_url: string
-          generated_image_url: string
-          prompt: string | null
           created_at: string
+          generated_image_url: string
+          id: string
+          original_image_url: string
+          prompt: string | null
+          user_id: string
         }
         Insert: {
-          id?: string
-          user_id: string
-          original_image_url: string
-          generated_image_url: string
-          prompt?: string | null
           created_at?: string
+          generated_image_url: string
+          id?: string
+          original_image_url: string
+          prompt?: string | null
+          user_id: string
         }
         Update: {
-          id?: string
-          user_id?: string
-          original_image_url?: string
-          generated_image_url?: string
-          prompt?: string | null
           created_at?: string
+          generated_image_url?: string
+          id?: string
+          original_image_url?: string
+          prompt?: string | null
+          user_id?: string
         }
+        Relationships: []
       }
     }
     Views: {
