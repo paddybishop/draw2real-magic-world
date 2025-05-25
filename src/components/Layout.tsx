@@ -1,6 +1,8 @@
+
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { useCredits } from "@/context/CreditsContext";
 import { toast } from "@/components/ui/use-toast";
 import CreditsDisplay from "./CreditsDisplay";
 
@@ -21,6 +23,10 @@ const Layout: React.FC<LayoutProps> = ({
 }) => {
   const navigate = useNavigate();
   const { user, signInWithGoogle, signOut } = useAuth();
+  const { addCredits } = useCredits();
+
+  // Check if current user is admin (your specific email)
+  const isAdmin = user?.email === "your-admin-email@example.com"; // Replace with your actual email
 
   const goBack = () => {
     if (backPath) {
@@ -58,11 +64,38 @@ const Layout: React.FC<LayoutProps> = ({
     }
   };
 
+  const handleAdminAddCredits = async () => {
+    try {
+      await addCredits(5, 'admin_grant', 'Admin granted credits');
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add credits",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <div className={`min-h-screen bg-draw-background p-4 flex flex-col ${className}`}>
       {/* Profile Section */}
       <div className="absolute top-4 right-4 z-50 flex flex-col items-end gap-2">
-        <CreditsDisplay />
+        <div className="flex items-center gap-2">
+          <CreditsDisplay />
+          {isAdmin && (
+            <button
+              onClick={handleAdminAddCredits}
+              className="flex items-center gap-1 bg-green-500 text-white rounded-full px-3 py-1 shadow-md hover:bg-green-600 transition-colors text-sm"
+              title="Add 5 credits (Admin only)"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14"/>
+                <path d="M12 5v14"/>
+              </svg>
+              +5
+            </button>
+          )}
+        </div>
         
         {user ? (
           <div className="flex items-center gap-3 bg-white/90 backdrop-blur-sm rounded-full px-4 py-2 shadow-md">

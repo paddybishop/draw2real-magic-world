@@ -55,13 +55,66 @@ const PremiumScreen: React.FC = () => {
   };
 
   return (
-    <Layout title="Get More Credits" showBackButton>
+    <Layout title="Premium Features" showBackButton>
       <div className="w-full max-w-md flex flex-col items-center justify-center gap-6">
         <div className="text-center">
           <p className="text-lg font-semibold text-draw-purple">You have {credits} credits</p>
           <p className="text-sm text-gray-600 mt-1">Each credit generates one AI image (£0.10 per image)</p>
         </div>
 
+        {/* Premium Features Section */}
+        <div className="w-full space-y-4">
+          <h3 className="text-xl font-bold text-center">Premium Features</h3>
+          
+          <div className="space-y-3">
+            <div className="bg-white rounded-lg p-4 shadow-md border-2 border-gray-200">
+              <div className="flex justify-between items-center mb-2">
+                <span className="font-semibold">Remove Watermark</span>
+                <span className="text-draw-purple font-bold">Coming Soon</span>
+              </div>
+              <p className="text-sm text-gray-600 mb-3">Generate images without watermark</p>
+              <PrimaryButton 
+                color="purple" 
+                className="w-full opacity-50"
+                disabled
+              >
+                Coming Soon
+              </PrimaryButton>
+            </div>
+
+            <div className="bg-white rounded-lg p-4 shadow-md border-2 border-gray-200">
+              <div className="flex justify-between items-center mb-2">
+                <span className="font-semibold">High Resolution</span>
+                <span className="text-draw-purple font-bold">Coming Soon</span>
+              </div>
+              <p className="text-sm text-gray-600 mb-3">Generate high-resolution images</p>
+              <PrimaryButton 
+                color="turquoise" 
+                className="w-full opacity-50"
+                disabled
+              >
+                Coming Soon
+              </PrimaryButton>
+            </div>
+
+            <div className="bg-white rounded-lg p-4 shadow-md border-2 border-gray-200">
+              <div className="flex justify-between items-center mb-2">
+                <span className="font-semibold">3D Toy Mode</span>
+                <span className="text-draw-purple font-bold">Coming Soon</span>
+              </div>
+              <p className="text-sm text-gray-600 mb-3">Turn drawings into 3D toy models</p>
+              <PrimaryButton 
+                color="yellow" 
+                className="w-full opacity-50"
+                disabled
+              >
+                Coming Soon
+              </PrimaryButton>
+            </div>
+          </div>
+        </div>
+
+        {/* Buy Credits Section */}
         <div className="w-full space-y-4">
           <h3 className="text-xl font-bold text-center">Buy Credits</h3>
           
@@ -124,8 +177,8 @@ const PremiumScreen: React.FC = () => {
               <code className="text-sm font-mono">{referralCode}</code>
             </div>
             <PrimaryButton 
-              color="white" 
-              className="w-full text-draw-purple"
+              color="pink" 
+              className="w-full"
               onClick={shareReferralCode}
             >
               Share Referral Link
