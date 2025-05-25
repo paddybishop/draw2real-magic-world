@@ -17,13 +17,6 @@ export function useImageGeneration() {
   } = useDrawContext();
   const [loadingDots, setLoadingDots] = useState("");
 
-  // Only redirect if not on camera page and there's no captured image
-  useEffect(() => {
-    if (!capturedImage && location.pathname !== "/camera") {
-      navigate("/camera");
-    }
-  }, [capturedImage, navigate]);
-
   useEffect(() => {
     let interval: NodeJS.Timeout;
     
