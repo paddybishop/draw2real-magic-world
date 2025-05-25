@@ -9,6 +9,36 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      credit_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          id: string
+          referral_code: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          referral_code?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          referral_code?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       generated_images: {
         Row: {
           created_at: string
@@ -36,12 +66,87 @@ export type Database = {
         }
         Relationships: []
       }
+      referral_codes: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      referral_usage: {
+        Row: {
+          created_at: string
+          credits_awarded: boolean | null
+          id: string
+          referral_code: string
+          referred_user_id: string
+          referrer_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credits_awarded?: boolean | null
+          id?: string
+          referral_code: string
+          referred_user_id: string
+          referrer_user_id: string
+        }
+        Update: {
+          created_at?: string
+          credits_awarded?: boolean | null
+          id?: string
+          referral_code?: string
+          referred_user_id?: string
+          referrer_user_id?: string
+        }
+        Relationships: []
+      }
+      user_credits: {
+        Row: {
+          created_at: string
+          credits: number
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credits?: number
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          credits?: number
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_referral_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

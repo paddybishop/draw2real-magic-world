@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/components/ui/use-toast";
+import CreditsDisplay from "./CreditsDisplay";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -60,7 +61,9 @@ const Layout: React.FC<LayoutProps> = ({
   return (
     <div className={`min-h-screen bg-draw-background p-4 flex flex-col ${className}`}>
       {/* Profile Section */}
-      <div className="absolute top-4 right-4 z-50">
+      <div className="absolute top-4 right-4 z-50 flex flex-col items-end gap-2">
+        <CreditsDisplay />
+        
         {user ? (
           <div className="flex items-center gap-3 bg-white/90 backdrop-blur-sm rounded-full px-4 py-2 shadow-md">
             {user.user_metadata?.avatar_url && (

@@ -15,7 +15,9 @@ const MakeRealScreen: React.FC = () => {
     capturedImage,
     isGenerating,
     loadingDots,
-    handleMakeReal
+    handleMakeReal,
+    handleMakeRealTest,
+    credits
   } = useImageGeneration();
 
   console.log("MakeRealScreen: capturedImage state on render:", capturedImage ? `data length ${capturedImage.length}` : null);
@@ -53,6 +55,8 @@ const MakeRealScreen: React.FC = () => {
     );
   }
 
+  const isAdmin = user?.email === 'paddybishop@gmail.com';
+
   return (
     <Layout title="Make It Real" showBackButton>
       <div className="w-full max-w-md flex flex-col items-center justify-center gap-4">
@@ -68,6 +72,15 @@ const MakeRealScreen: React.FC = () => {
           </p>
         )}
 
+        {user && (
+          <div className="text-center">
+            <p className="text-sm text-gray-600">
+              You have <span className="font-semibold text-draw-purple">{credits} credits</span>
+            </p>
+            <p className="text-xs text-gray-500">Each generation uses 1 credit</p>
+          </div>
+        )}
+
         {!user && (
           <p className="text-sm text-gray-600 text-center">
             Sign in to turn your drawing into a realistic image and save your creations.
@@ -75,29 +88,55 @@ const MakeRealScreen: React.FC = () => {
         )}
 
         {user ? (
-          <PrimaryButton
-            color="purple"
-            size="large"
-            className="animate-bounce-light w-64"
-            onClick={handleMakeReal}
-            disabled={isGenerating}
-          >
-            {isGenerating ? (
-              <span>Working on it...</span>
+          <div className="flex flex-col gap-3 w-full">
+            {credits > 0 ? (
+              <PrimaryButton
+                color="purple"
+                size="large"
+                className="animate-bounce-light w-full"
+                onClick={handleMakeReal}
+                disabled={isGenerating}
+              >
+                {isGenerating ? (
+                  <span>Working on it...</span>
+                ) : (
+                  <div className="flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="2" y="8" width="20" height="8" rx="2" ry="2"/>
+                      <rect x="14" y="16" width="8" height="6" rx="2" ry="2"/>
+                      <rect x="2" y="16" width="8" height="6" rx="2" ry="2"/>
+                      <path d="m22 8-4-4H6L2 8"/>
+                      <path d="M18 2h2a2 2 0 0 1 2 2v4"/>
+                      <path d="M4 2h2a2 2 0 0 1 2 2v4"/>
+                    </svg>
+                    Make Real
+                  </div>
+                )}
+              </PrimaryButton>
             ) : (
-              <div className="flex items-center justify-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="2" y="8" width="20" height="8" rx="2" ry="2"/>
-                  <rect x="14" y="16" width="8" height="6" rx="2" ry="2"/>
-                  <rect x="2" y="16" width="8" height="6" rx="2" ry="2"/>
-                  <path d="m22 8-4-4H6L2 8"/>
-                  <path d="M18 2h2a2 2 0 0 1 2 2v4"/>
-                  <path d="M4 2h2a2 2 0 0 1 2 2v4"/>
-                </svg>
-                Make Real
-              </div>
+              <PrimaryButton
+                color="turquoise"
+                size="large"
+                className="w-full"
+                onClick={() => navigate('/premium')}
+                disabled={isGenerating}
+              >
+                Get Credits to Continue
+              </PrimaryButton>
             )}
-          </PrimaryButton>
+
+            {isAdmin && (
+              <PrimaryButton
+                color="yellow"
+                size="large"
+                className="w-full"
+                onClick={handleMakeRealTest}
+                disabled={isGenerating}
+              >
+                Make Real - Test (Admin)
+              </PrimaryButton>
+            )}
+          </div>
         ) : (
           <PrimaryButton
             color="purple"

@@ -3,235 +3,140 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import PrimaryButton from "@/components/PrimaryButton";
-import SquigglyHeading from "@/components/SquigglyHeading";
-import { useDrawContext } from "@/context/DrawContext";
-import { toast } from "@/components/ui/use-toast";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useCredits } from "@/context/CreditsContext";
+import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 
 const PremiumScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { generatedImage } = useDrawContext();
-  const [selectedFeature, setSelectedFeature] = React.useState<string | null>(null);
-  const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [isLoading, setIsLoading] = React.useState(false);
-  
-  const premiumFeatures = [
-    {
-      emoji: "🧽",
-      title: "Remove Watermark",
-      description: "Get clean images without our logo",
-      color: "bg-draw-pink",
-      price: "$2.99",
-      status: "available",
-      productId: "remove-watermark"
-    },
-    {
-      emoji: "🖼️",
-      title: "Order Framed Print",
-      description: "Get a beautiful framed print delivered",
-      color: "bg-draw-turquoise",
-      price: "$19.99",
-      status: "available",
-      productId: "framed-print"
-    },
-    {
-      emoji: "🧸",
-      title: "Turn into a Real Toy",
-      description: "Have your drawing made into a stuffed toy",
-      color: "bg-draw-purple",
-      price: "$39.99",
-      status: "coming-soon",
-      productId: "stuffed-toy"
-    }
-  ];
-  
-  const handlePremiumFeature = (feature: string, status: string, productId: string) => {
-    if (status === "coming-soon") {
+  const { credits, referralCode } = useCredits();
+  const { user } = useAuth();
+
+  const handlePurchase = async (priceId: string) => {
+    if (!user) {
       toast({
-        title: "Coming Soon!",
-        description: `The ${feature} feature will be available soon. Stay tuned!`,
+        title: "Authentication Required",
+        description: "Please sign in to purchase credits",
+        variant: "destructive"
       });
       return;
     }
-    
-    setSelectedFeature(feature);
-    setDialogOpen(true);
-  };
-  
-  const handlePayment = async () => {
-    setIsLoading(true);
-    
+
     try {
-      const selectedProduct = premiumFeatures.find(f => f.title === selectedFeature);
-      
-      if (!selectedProduct) {
-        throw new Error("Selected product not found");
-      }
-      
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { productId: selectedProduct.productId },
+        body: { priceId }
       });
-      
-      if (error) {
-        throw error;
-      }
-      
-      // Redirect to Stripe checkout
-      if (data.url) {
+
+      if (error) throw error;
+
+      if (data?.url) {
         window.location.href = data.url;
-      } else {
-        throw new Error("No checkout URL received");
       }
     } catch (error) {
-      console.error("Payment error:", error);
+      console.error('Error creating checkout:', error);
       toast({
-        title: "Payment Error",
-        description: "There was a problem processing your payment. Please try again.",
-        variant: "destructive",
+        title: "Error",
+        description: "Failed to create checkout session",
+        variant: "destructive"
       });
-    } finally {
-      setIsLoading(false);
-      setDialogOpen(false);
     }
   };
-  
-  const handleBackToShare = () => {
-    navigate("/result");
+
+  const shareReferralCode = () => {
+    if (referralCode) {
+      const referralUrl = `${window.location.origin}?ref=${referralCode}`;
+      navigator.clipboard.writeText(referralUrl);
+      toast({
+        title: "Referral Link Copied",
+        description: "Share this link to earn 5 credits when friends sign up and buy credits!",
+      });
+    }
   };
-  
+
   return (
-    <Layout title="Premium Features" showBackButton backPath="/result">
+    <Layout title="Get More Credits" showBackButton>
       <div className="w-full max-w-md flex flex-col items-center justify-center gap-6">
-        <div className="w-full text-center mb-2">
-          <SquigglyHeading colors="from-draw-purple via-draw-pink to-draw-turquoise">
-            Upgrade Your Creation
-          </SquigglyHeading>
+        <div className="text-center">
+          <p className="text-lg font-semibold text-draw-purple">You have {credits} credits</p>
+          <p className="text-sm text-gray-600 mt-1">Each credit generates one AI image (£0.10 per image)</p>
         </div>
-        
-        <div className="w-full flex flex-col gap-4">
-          {premiumFeatures.map((feature, index) => (
-            <div 
-              key={index}
-              className="bg-white rounded-2xl p-4 shadow-lg hover:shadow-xl transition-all relative"
-            >
-              <div className="flex items-center">
-                <div className={`${feature.color} w-16 h-16 rounded-xl flex items-center justify-center text-3xl`}>
-                  {feature.emoji}
-                </div>
-                <div className="ml-4 flex-1">
-                  <h3 className="font-bold text-lg">{feature.title}</h3>
-                  <p className="text-gray-500 text-sm">{feature.description}</p>
-                </div>
-                <div className="ml-2">
-                  <PrimaryButton
-                    color={index === 0 ? "pink" : index === 1 ? "turquoise" : "purple"}
-                    size="small"
-                    onClick={() => handlePremiumFeature(feature.title, feature.status, feature.productId)}
-                  >
-                    {feature.status === "coming-soon" ? "Soon" : feature.price}
-                  </PrimaryButton>
-                </div>
+
+        <div className="w-full space-y-4">
+          <h3 className="text-xl font-bold text-center">Buy Credits</h3>
+          
+          <div className="space-y-3">
+            <div className="bg-white rounded-lg p-4 shadow-md border-2 border-gray-200">
+              <div className="flex justify-between items-center mb-2">
+                <span className="font-semibold">50 Credits</span>
+                <span className="text-draw-purple font-bold">£5.00</span>
               </div>
-              
-              {feature.status === "coming-soon" && (
-                <div className="absolute top-0 right-0 -mt-2 -mr-2">
-                  <span className="bg-draw-yellow text-xs font-bold px-2 py-1 rounded-full animate-pulse">
-                    Coming Soon
-                  </span>
-                </div>
-              )}
+              <p className="text-sm text-gray-600 mb-3">Perfect for getting started</p>
+              <PrimaryButton 
+                color="purple" 
+                className="w-full"
+                onClick={() => handlePurchase('price_5')}
+              >
+                Buy 50 Credits
+              </PrimaryButton>
             </div>
-          ))}
-        </div>
-        
-        <div className="mt-6 w-full">
-          <div className="border-t border-gray-200 pt-4">
-            <PrimaryButton
-              color="yellow"
-              className="w-full"
-              onClick={handleBackToShare}
-            >
-              <div className="flex items-center justify-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-                  <polyline points="16 6 12 2 8 6"/>
-                  <line x1="12" y1="2" x2="12" y2="15"/>
-                </svg>
-                Back to Free Sharing
+
+            <div className="bg-white rounded-lg p-4 shadow-md border-2 border-draw-turquoise">
+              <div className="flex justify-between items-center mb-2">
+                <span className="font-semibold">100 Credits</span>
+                <span className="text-draw-purple font-bold">£10.00</span>
               </div>
-            </PrimaryButton>
+              <p className="text-sm text-gray-600 mb-1">Most popular choice</p>
+              <p className="text-xs text-draw-turquoise font-semibold mb-3">Best Value!</p>
+              <PrimaryButton 
+                color="turquoise" 
+                className="w-full"
+                onClick={() => handlePurchase('price_10')}
+              >
+                Buy 100 Credits
+              </PrimaryButton>
+            </div>
+
+            <div className="bg-white rounded-lg p-4 shadow-md border-2 border-gray-200">
+              <div className="flex justify-between items-center mb-2">
+                <span className="font-semibold">200 Credits</span>
+                <span className="text-draw-purple font-bold">£20.00</span>
+              </div>
+              <p className="text-sm text-gray-600 mb-3">For power users</p>
+              <PrimaryButton 
+                color="purple" 
+                className="w-full"
+                onClick={() => handlePurchase('price_20')}
+              >
+                Buy 200 Credits
+              </PrimaryButton>
+            </div>
           </div>
         </div>
+
+        {referralCode && (
+          <div className="w-full bg-gradient-to-r from-draw-pink to-draw-purple rounded-lg p-4 text-white">
+            <h3 className="font-bold mb-2">Earn Free Credits!</h3>
+            <p className="text-sm mb-3">
+              Get 5 credits for every friend who signs up and buys credits using your referral code:
+            </p>
+            <div className="bg-white/20 rounded px-3 py-2 mb-3">
+              <code className="text-sm font-mono">{referralCode}</code>
+            </div>
+            <PrimaryButton 
+              color="white" 
+              className="w-full text-draw-purple"
+              onClick={shareReferralCode}
+            >
+              Share Referral Link
+            </PrimaryButton>
+          </div>
+        )}
+
+        <PrimaryButton color="yellow" onClick={() => navigate('/gallery')}>
+          View Gallery
+        </PrimaryButton>
       </div>
-      
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Purchase {selectedFeature}</DialogTitle>
-            <DialogDescription>
-              {selectedFeature === "Remove Watermark" ? (
-                "Get your image without our logo for just $2.99"
-              ) : selectedFeature === "Order Framed Print" ? (
-                "Get your drawing professionally framed and delivered to your door for $19.99"
-              ) : (
-                "Turn your creation into a physical toy for $39.99"
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex items-center space-x-2 mt-4">
-            {generatedImage && (
-              <div className="border-4 border-white rounded-lg shadow-md overflow-hidden w-24 h-24">
-                <img 
-                  src={generatedImage} 
-                  alt="Your creation" 
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            )}
-            <div>
-              <p className="font-medium">{selectedFeature}</p>
-              <p className="text-sm text-gray-500">One-time purchase</p>
-            </div>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-2 mt-4">
-            <PrimaryButton
-              color="yellow"
-              className="flex-1"
-              onClick={() => setDialogOpen(false)}
-              disabled={isLoading}
-            >
-              Cancel
-            </PrimaryButton>
-            <PrimaryButton
-              color="purple"
-              className="flex-1"
-              onClick={handlePayment}
-              disabled={isLoading}
-            >
-              <div className="flex items-center gap-2">
-                {isLoading ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect width="20" height="14" x="2" y="5" rx="2" />
-                      <line x1="2" x2="22" y1="10" y2="10" />
-                    </svg>
-                    Proceed to Payment
-                  </>
-                )}
-              </div>
-            </PrimaryButton>
-          </div>
-        </DialogContent>
-      </Dialog>
     </Layout>
   );
 };

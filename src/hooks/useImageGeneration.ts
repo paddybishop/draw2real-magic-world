@@ -1,8 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDrawContext } from "@/context/DrawContext";
 import { useAuth } from "@/context/AuthContext";
+import { useCredits } from "@/context/CreditsContext";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { uploadImageToStorage, blobToBase64 } from "@/utils/imageStorage";
@@ -10,6 +10,7 @@ import { uploadImageToStorage, blobToBase64 } from "@/utils/imageStorage";
 export function useImageGeneration() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { credits, deductCredit } = useCredits();
   const { 
     capturedImage, 
     setGeneratedImage, 
@@ -54,6 +55,17 @@ export function useImageGeneration() {
       navigate("/auth/prompt");
       return;
     }
+
+    // Check if user has credits
+    if (credits <= 0) {
+      toast({
+        title: "No Credits",
+        description: "You need credits to generate images. Purchase more to continue.",
+        variant: "destructive"
+      });
+      navigate("/premium");
+      return;
+    }
     
     setIsGenerating(true);
     setGenerationError(null);
@@ -61,6 +73,12 @@ export function useImageGeneration() {
     try {
       console.log("Starting image generation process");
       
+      // Deduct credit first
+      const creditDeducted = await deductCredit();
+      if (!creditDeducted) {
+        throw new Error("Failed to deduct credit");
+      }
+
       // First, save the original drawing to storage using the edge function
       const timestamp = new Date().getTime();
       const originalFileName = `original-${timestamp}.png`;
@@ -223,10 +241,58 @@ export function useImageGeneration() {
     }
   };
 
+  // Admin test function (only for specific user)
+  const handleMakeRealTest = async () => {
+    if (!user || user.email !== 'paddybishop@gmail.com') {
+      toast({
+        title: "Unauthorized",
+        description: "This feature is only available to administrators",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!capturedImage) {
+      toast({
+        title: "No Image",
+        description: "Please capture an image first",
+        variant: "destructive"
+      });
+      navigate("/camera");
+      return;
+    }
+
+    setIsGenerating(true);
+    setGenerationError(null);
+
+    try {
+      // Simulate generation without API call
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Use the captured image as the "generated" image for testing
+      setGeneratedImage(capturedImage);
+      setGeneratedPrompt("Test generation - no API call made");
+      
+      toast({
+        title: "Test Generation Complete",
+        description: "Admin test completed without using credits or API calls",
+      });
+      
+      setIsGenerating(false);
+      navigate("/result");
+    } catch (error) {
+      console.error("Error in test generation:", error);
+      setGenerationError("Test generation failed");
+      setIsGenerating(false);
+    }
+  };
+
   return {
     capturedImage,
     isGenerating,
     loadingDots,
-    handleMakeReal
+    handleMakeReal,
+    handleMakeRealTest,
+    credits
   };
 }

@@ -1,66 +1,72 @@
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Layout from "@/components/Layout";
 import PrimaryButton from "@/components/PrimaryButton";
-import { useDrawContext } from "@/context/DrawContext";
 import Confetti from "@/components/Confetti";
-import { toast } from "sonner";
+import { useCredits } from "@/context/CreditsContext";
 
 const PaymentSuccessScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { setIsWatermarkRemoved } = useDrawContext();
   const [searchParams] = useSearchParams();
-  const product = searchParams.get("product");
+  const [showConfetti, setShowConfetti] = useState(true);
+  const { addCredits, credits } = useCredits();
   
+  const creditsAdded = searchParams.get('credits');
+
   useEffect(() => {
-    // Process the successful payment based on the product
-    if (product === "remove-watermark") {
-      setIsWatermarkRemoved(true);
-      toast.success("Watermark successfully removed!");
-    } else if (product) {
-      toast.success(`Thank you for your ${product} purchase!`);
+    // Add credits if they were purchased
+    if (creditsAdded) {
+      const amount = parseInt(creditsAdded);
+      if (amount > 0) {
+        addCredits(amount, 'purchase', `Purchased ${amount} credits`);
+      }
     }
-  }, [product, setIsWatermarkRemoved]);
-  
-  const handleContinue = () => {
-    navigate("/result");
-  };
-  
+
+    // Hide confetti after 3 seconds
+    const timer = setTimeout(() => {
+      setShowConfetti(false);
+    }, 3000);
+    
+    return () => clearTimeout(timer);
+  }, [creditsAdded, addCredits]);
+
   return (
-    <Layout title="Payment Successful" showBackButton={false}>
-      <Confetti />
+    <Layout title="Payment Successful!" showBackButton={false}>
+      {showConfetti && <Confetti />}
       
       <div className="w-full max-w-md flex flex-col items-center justify-center gap-6 text-center">
-        <div className="bg-white rounded-2xl shadow-xl p-6 flex flex-col items-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-green-500" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-          </div>
-          
-          <h2 className="text-xl font-bold mb-2">Payment Successful!</h2>
-          
-          {product === "remove-watermark" ? (
-            <p className="text-gray-600 mb-4">
-              Your image has been updated and the watermark has been removed.
-            </p>
-          ) : product === "framed-print" ? (
-            <p className="text-gray-600 mb-4">
-              Thank you for ordering a framed print! We'll process your order and contact you with shipping details soon.
-            </p>
-          ) : (
-            <p className="text-gray-600 mb-4">
-              Thank you for your purchase! Your payment has been processed successfully.
+        <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-600">
+            <path d="M20 6L9 17l-5-5"/>
+          </svg>
+        </div>
+        
+        <div>
+          <h2 className="text-2xl font-bold text-green-600 mb-2">Payment Successful!</h2>
+          {creditsAdded && (
+            <p className="text-lg text-gray-700">
+              {creditsAdded} credits have been added to your account
             </p>
           )}
-          
+          <p className="text-sm text-gray-600 mt-2">
+            You now have {credits} credits available
+          </p>
+        </div>
+
+        <div className="flex gap-3">
           <PrimaryButton
             color="purple"
-            onClick={handleContinue}
-            className="w-full"
+            onClick={() => navigate("/camera")}
           >
-            Continue to Your Image
+            Create New Image
+          </PrimaryButton>
+          
+          <PrimaryButton
+            color="turquoise"
+            onClick={() => navigate("/gallery")}
+          >
+            View Gallery
           </PrimaryButton>
         </div>
       </div>
