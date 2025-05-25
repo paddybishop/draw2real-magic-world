@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 
 interface DrawContextType {
   capturedImage: string | null;
@@ -20,12 +20,33 @@ interface DrawContextType {
 const DrawContext = createContext<DrawContextType | undefined>(undefined);
 
 export const DrawProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [capturedImage, setCapturedImageState] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [generatedPrompt, setGeneratedPrompt] = useState<string | null>(null);
   const [isWatermarkRemoved, setIsWatermarkRemoved] = useState(false);
+
+  // Load captured image from sessionStorage on mount
+  useEffect(() => {
+    const savedImage = sessionStorage.getItem('capturedImage');
+    if (savedImage) {
+      console.log('Restoring captured image from sessionStorage');
+      setCapturedImageState(savedImage);
+    }
+  }, []);
+
+  // Custom setCapturedImage that also saves to sessionStorage
+  const setCapturedImage = (image: string | null) => {
+    console.log('Setting captured image:', image ? `data length ${image.length}` : null);
+    setCapturedImageState(image);
+    
+    if (image) {
+      sessionStorage.setItem('capturedImage', image);
+    } else {
+      sessionStorage.removeItem('capturedImage');
+    }
+  };
 
   const resetImages = () => {
     setCapturedImage(null);
@@ -34,6 +55,7 @@ export const DrawProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setGenerationError(null);
     setGeneratedPrompt(null);
     setIsWatermarkRemoved(false);
+    sessionStorage.removeItem('capturedImage');
   };
 
   return (

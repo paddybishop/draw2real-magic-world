@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -19,7 +20,7 @@ const AuthPromptScreen: React.FC = () => {
          navigate('/make-real', { replace: true });
       } else {
         // Default redirect if they somehow landed here while logged in
-        navigate('/', { replace: true });
+        navigate('/make-real', { replace: true });
       }
     }
   }, [user, navigate]);
@@ -28,6 +29,10 @@ const AuthPromptScreen: React.FC = () => {
     try {
       // Store the intended return path after successful authentication
       sessionStorage.setItem('returnTo', '/make-real');
+      
+      // Also set the trigger flag so we know to auto-trigger makeReal after auth
+      sessionStorage.setItem('triggerMakeReal', 'true');
+      
       await signInWithGoogle();
     } catch (error) {
       console.error("Error initiating sign-in:", error);
@@ -69,4 +74,4 @@ const AuthPromptScreen: React.FC = () => {
   );
 };
 
-export default AuthPromptScreen; 
+export default AuthPromptScreen;

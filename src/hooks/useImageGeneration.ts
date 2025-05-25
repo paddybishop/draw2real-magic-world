@@ -1,12 +1,15 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDrawContext } from "@/context/DrawContext";
+import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { uploadImageToStorage, blobToBase64 } from "@/utils/imageStorage";
 
 export function useImageGeneration() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { 
     capturedImage, 
     setGeneratedImage, 
@@ -39,6 +42,16 @@ export function useImageGeneration() {
         variant: "destructive"
       });
       navigate("/camera");
+      return;
+    }
+
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to generate images",
+        variant: "destructive"
+      });
+      navigate("/auth/prompt");
       return;
     }
     
@@ -142,15 +155,16 @@ export function useImageGeneration() {
         console.log("Generated image stored successfully:", storedGeneratedImageUrl);
         setGeneratedImage(storedGeneratedImageUrl);
         
-        // Store the image metadata in the database with retry logic
+        // Store the image metadata in the database with retry logic - NOW INCLUDING user_id
         let dbError = null;
         retryCount = 0;
         
-        while (dbError && retryCount < maxRetries) {
+        while (retryCount < maxRetries) {
           const { error } = await supabase
             .from('generated_images')
             .insert({
-              original_image_url: originalImageUrl,
+              user_id: user.id, // This was missing before!
+              original_image_url: originalImageUrl || '',
               generated_image_url: storedGeneratedImageUrl,
               prompt: generatedPrompt,
               created_at: new Date().toISOString()
@@ -158,12 +172,14 @@ export function useImageGeneration() {
             
           if (error) {
             console.error(`Database insert attempt ${retryCount + 1} failed:`, error);
+            dbError = error;
             retryCount++;
             if (retryCount < maxRetries) {
               await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
             }
           } else {
             dbError = null;
+            break;
           }
         }
         
