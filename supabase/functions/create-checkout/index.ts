@@ -48,8 +48,9 @@ serve(async (req) => {
       customerId = customers.data[0].id;
     }
 
-    // Define credit packages
+    // Define credit packages with new amounts
     const creditPackages: Record<string, { amount: number; credits: number; name: string }> = {
+      "price_1": { amount: 100, credits: 10, name: "10 Credits - £1" },
       "price_5": { amount: 500, credits: 50, name: "50 Credits - £5" },
       "price_10": { amount: 1000, credits: 100, name: "100 Credits - £10" },
       "price_20": { amount: 2000, credits: 200, name: "200 Credits - £20" }
