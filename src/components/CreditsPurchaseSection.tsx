@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
 import { Slider } from '@/components/ui/slider';
-import { Card, CardContent } from '@/components/ui/card';
 import PrimaryButton from '@/components/PrimaryButton';
 import { useCredits } from '@/context/CreditsContext';
 import { useAuth } from '@/context/AuthContext';
@@ -9,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 
 const CreditsPurchaseSection: React.FC = () => {
-  const [selectedValue, setSelectedValue] = useState([1]); // Default to £1
+  const [selectedValue, setSelectedValue] = useState([0]); // Default to £1
   const { credits } = useCredits();
   const { user } = useAuth();
 
@@ -55,50 +54,55 @@ const CreditsPurchaseSection: React.FC = () => {
 
   return (
     <div className="w-full space-y-4">
-      <h3 className="text-xl font-bold text-center">Buy Credits</h3>
-      <div className="text-center">
-        <p className="text-lg font-semibold text-draw-purple">You have {credits} credits</p>
-        <p className="text-sm text-gray-600 mt-1">Each credit generates one AI image (£0.10 per image)</p>
+      <div className="mb-3">
+        <img 
+          src="https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&h=200&fit=crop" 
+          alt="Buy credits preview" 
+          className="w-full h-32 object-cover rounded-lg"
+        />
       </div>
       
-      <Card className="w-full">
-        <CardContent className="p-6">
-          <div className="space-y-6">
-            <div className="text-center">
-              <h4 className="text-lg font-semibold text-draw-purple">
-                £{currentOption.price} = {currentOption.credits} Credits
-              </h4>
-              <p className="text-sm text-gray-600">{currentOption.description}</p>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="flex justify-between text-sm text-gray-600">
-                <span>£1 (10 credits)</span>
-                <span>£5 (50 credits)</span>
-                <span>£10 (100 credits)</span>
-                <span>£20 (200 credits)</span>
-              </div>
-              
-              <Slider
-                value={selectedValue}
-                onValueChange={setSelectedValue}
-                max={3}
-                min={0}
-                step={1}
-                className="w-full"
-              />
-            </div>
-            
-            <PrimaryButton 
-              color="purple" 
-              className="w-full"
-              onClick={handlePurchase}
-            >
-              Buy {currentOption.credits} Credits for £{currentOption.price}
-            </PrimaryButton>
+      <div className="flex justify-between items-center mb-2">
+        <span className="font-semibold">Buy Credits</span>
+        <span className="text-draw-purple font-bold">You have {credits} credits</span>
+      </div>
+      
+      <p className="text-sm text-gray-600 mb-3">Each credit generates one AI image (£0.10 per image)</p>
+      
+      <div className="space-y-4">
+        <div className="text-center">
+          <h4 className="text-lg font-semibold text-draw-purple">
+            £{currentOption.price} = {currentOption.credits} Credits
+          </h4>
+          <p className="text-sm text-gray-600">{currentOption.description}</p>
+        </div>
+        
+        <div className="space-y-2">
+          <div className="flex justify-between text-xs text-gray-600">
+            <span>£1</span>
+            <span>£5</span>
+            <span>£10</span>
+            <span>£20</span>
           </div>
-        </CardContent>
-      </Card>
+          
+          <Slider
+            value={selectedValue}
+            onValueChange={setSelectedValue}
+            max={3}
+            min={0}
+            step={1}
+            className="w-full"
+          />
+        </div>
+        
+        <PrimaryButton 
+          color="purple" 
+          className="w-full"
+          onClick={handlePurchase}
+        >
+          Buy {currentOption.credits} Credits for £{currentOption.price}
+        </PrimaryButton>
+      </div>
     </div>
   );
 };

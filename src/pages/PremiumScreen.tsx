@@ -98,11 +98,13 @@ const PremiumScreen: React.FC = () => {
                 Coming Soon
               </PrimaryButton>
             </div>
+
+            {/* Credits Purchase Section as 4th item */}
+            <div className="bg-white rounded-lg p-4 shadow-md border-2 border-gray-200">
+              <CreditsPurchaseSection />
+            </div>
           </div>
         </div>
-
-        {/* Credits Purchase Section */}
-        <CreditsPurchaseSection />
 
         {/* Referral Section */}
         {referralCode && (
